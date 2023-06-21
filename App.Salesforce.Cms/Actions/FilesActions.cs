@@ -28,7 +28,7 @@ namespace Apps.Salesforce.Cms.Actions
             var query = $"SELECT FIELDS(ALL) FROM ContentDocument WHERE Id = '{input.FileId}'";
             var client = new SalesforceClient(authenticationCredentialsProviders);
             var request = new SalesforceRequest($"services/data/v57.0/query?q={query}", Method.Get, authenticationCredentialsProviders);
-            return client.Get<ListAllFilesResponse>(request).FileInfos.FirstOrDefault();
+            return client.Get<ListAllFilesResponse>(request).Records.FirstOrDefault();
         }
 
         [Action("Download file", Description = "Download file by id")]

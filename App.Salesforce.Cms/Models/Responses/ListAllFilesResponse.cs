@@ -9,6 +9,6 @@ namespace App.Salesforce.Cms.Models.Responses
 {
     public class ListAllFilesResponse
     {
-        public IEnumerable<FileInfoDto> FileInfos { get; set; }
+        public IEnumerable<FileInfoDto> Records { get; set; }
     }
 }
