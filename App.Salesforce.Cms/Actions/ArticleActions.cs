@@ -63,7 +63,7 @@ namespace App.Salesforce.Cms.Actions
             return client.Get<ArticleInfoDto>(request);
         }
 
-        [Action("Get article content as object", Description = "Get article content as object by id")]
+        [Action("Get all article content as object", Description = "Get all article content as object by id")]
         public ArticleContentDto GetArticleContent(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] GetArticleContentRequest input)
         {
@@ -71,6 +71,16 @@ namespace App.Salesforce.Cms.Actions
             var request = new SalesforceRequest($"services/data/v57.0/support/knowledgeArticles/{input.ArticleId}", Method.Get, authenticationCredentialsProviders);
             request.AddLocaleHeader(input.Locale);
             return client.Get<ArticleContentDto>(request);
+        }
+
+        [Action("Get article custom content as object", Description = "Get article custom content as object by id")]
+        public GetArticleCustomContent GetArticleCustomContent(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] GetArticleContentRequest input)
+        {
+            return new GetArticleCustomContent()
+            {
+                Items = GetArticleContent(authenticationCredentialsProviders, input).LayoutItems.Where(i => i.Name.EndsWith("__c"))
+            };
         }
 
         [Action("Get article content as HTML file", Description = "Get article content as HTML file by id")]
