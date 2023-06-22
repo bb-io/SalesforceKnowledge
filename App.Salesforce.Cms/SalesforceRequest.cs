@@ -15,5 +15,10 @@ namespace Apps.Salesforce.Cms
             var token = authenticationCredentialsProviders.First(p => p.KeyName == "Authorization").Value;
             this.AddHeader("Authorization", $"{token}");
         }
+
+        public void AddLocaleHeader(string locale)
+        {
+            this.AddHeader("Accept-language", locale);
+        }
     }
 }
