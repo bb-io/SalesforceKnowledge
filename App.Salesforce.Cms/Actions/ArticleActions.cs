@@ -151,7 +151,7 @@ namespace App.Salesforce.Cms.Actions
             client.Execute(request);
         }
 
-        [Action("Publish knowledge article translation", Description = "Publish knowledge article translation")]
+        [Action("Publish knowledge article draft", Description = "Publish knowledge article draft")]
         public void PublishKnowledgeTranslation(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] PublishKnowledgeTranslationRequest input)
         {
@@ -159,6 +159,8 @@ namespace App.Salesforce.Cms.Actions
             var articleInDraft = versions.Records.Where(r => r.PublishStatus == "Draft" && r.Language == input.Locale).First();
             var client = new SalesforceClient(authenticationCredentialsProviders);
             var request = new SalesforceRequest($"services/data/v57.0/actions/standard/publishKnowledgeArticles", Method.Post, authenticationCredentialsProviders);
+            var pubAction = GetKnowledgeSettings(authenticationCredentialsProviders).DefaultLanguage == input.Locale ? 
+                 "PUBLISH_ARTICLE" : "PUBLISH_TRANSLATION";
             request.AddJsonBody(new
             {
                 inputs = new[]
@@ -166,11 +168,63 @@ namespace App.Salesforce.Cms.Actions
                     new
                     {
                         articleVersionIdList = new[]{ articleInDraft.Id },
-                        pubAction = "PUBLISH_TRANSLATION"
+                        pubAction = pubAction
                     } 
                 }
             });
             client.Execute(request);
+        }
+
+        [Action("Create draft for knowledge article", Description = "Create draft for knowledge article")]
+        public CreateArticleDraftResponse CreatedArticleDraft(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] CreateArticleDraftRequest input)
+        {
+            var versions = ListAllArticlesVersions(authenticationCredentialsProviders, new GetArticleInfoRequest() { ArticleId = input.ArticleId });
+            var articlePublished = versions.Records.Where(r => r.PublishStatus == "Online" && r.Language == input.Locale).First();
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v57.0/actions/standard/createDraftFromOnlineKnowledgeArticle", Method.Post, authenticationCredentialsProviders);
+            var isTranslation = GetKnowledgeSettings(authenticationCredentialsProviders).DefaultLanguage != input.Locale;
+            request.AddJsonBody(new
+            {
+                inputs = new[]
+                {
+                    new
+                    {
+                        action = isTranslation ? "EDIT_AS_DRAFT_TRANSLATION" : "EDIT_AS_DRAFT_ARTICLE",
+                        unpublish = false,
+                        articleVersionId = articlePublished.Id
+                    }
+                }
+            });
+            return new CreateArticleDraftResponse() 
+            { 
+                DraftVersionId = client.Execute<List<DraftResponseDto>>(request).Data.First().OutputValues.DraftId 
+            };
+        }
+
+        [Action("Update knowledge article field", Description = "Update knowledge article field")]
+        public void UpdateKnowledgeArticleField(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] UpdateKnowledgeArticleFieldRequest input)
+        {
+            var draftVersion = CreatedArticleDraft(authenticationCredentialsProviders, new CreateArticleDraftRequest() 
+            { 
+                ArticleId = input.ArticleId,
+                Locale = input.Locale
+            });
+            var articleMetadata = GetArticleInfo(authenticationCredentialsProviders, new GetArticleInfoRequest() { ArticleId = input.ArticleId });
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v58.0/sobjects/{articleMetadata.ArticleType}/{draftVersion.DraftVersionId}", Method.Patch, authenticationCredentialsProviders);
+            request.AddJsonBody(new Dictionary<string, string>()
+            {
+                { input.FieldName, input.FieldValue }
+            });
+            client.Execute(request);
+            PublishKnowledgeTranslation(authenticationCredentialsProviders,
+                new PublishKnowledgeTranslationRequest()
+                {
+                    ArticleId = input.ArticleId,
+                    Locale = input.Locale
+                });
         }
 
         [Action("Get knowledge language settings", Description = "Get knowledge language settings")]
