@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace App.Salesforce.Cms.Dtos
 {
-    public class ContentVersionDto
+    public class FileContentVersionDto
     {
         public string Id { get; set; }
         public string Title { get; set; }

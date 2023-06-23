@@ -17,7 +17,9 @@ namespace App.Salesforce.Cms.Actions
     [ActionList]
     public class ArticleActions
     {
-        [Action("List all articles", Description = "List all articles")]
+        #region List actions
+
+        [Action("List all master knowledge articles", Description = "List all master knowledge articles")]
         public ListAllArticlesResponse ListAllArticles(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
         {
             var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
@@ -54,6 +56,18 @@ namespace App.Salesforce.Cms.Actions
                 });
         }
 
+        [Action("List knowledge article versions", Description = "List knowledge article versions")]
+        public ListAllArticlesVersionsResponse ListAllArticlesVersions(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] GetArticleInfoRequest input)
+        {
+            var articleMetadata = GetArticleInfo(authenticationCredentialsProviders, input);
+            var query = $"SELECT FIELDS(ALL) FROM {articleMetadata.ArticleType} WHERE KnowledgeArticleId = '{input.ArticleId}' LIMIT 200";
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v57.0/query?q={query}", Method.Get, authenticationCredentialsProviders);
+            return client.Get<ListAllArticlesVersionsResponse>(request);
+        }
+        #endregion
+
         [Action("Get article info", Description = "Get article info by id")]
         public ArticleInfoDto GetArticleInfo(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] GetArticleInfoRequest input)
@@ -73,7 +87,7 @@ namespace App.Salesforce.Cms.Actions
             return client.Get<ArticleContentDto>(request);
         }
 
-        [Action("Get article custom content as object", Description = "Get article custom content as object by id")]
+        [Action("Get article custom content as object", Description = "Get article custom content only as object by id")]
         public GetArticleCustomContent GetArticleCustomContent(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] GetArticleContentRequest input)
         {
@@ -118,14 +132,53 @@ namespace App.Salesforce.Cms.Actions
             };
         }
 
+        [Action("Submit knowledge article to translation", Description = "Submit knowledge article to translation")]
+        public void SubmitToTranslation(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] SubmitToTranslationRequest input)
+        {
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v57.0/actions/standard/submitKnowledgeArticleForTranslation", Method.Post, authenticationCredentialsProviders);
+            request.AddJsonBody(new
+            {
+                inputs = new[]{
+                    new {
+                        articleId = input.ArticleId,
+                        language = input.Locale,
+                        assigneeId = input.AssigneeId 
+                    } 
+                }
+            });
+            client.Execute(request);
+        }
+
+        [Action("Publish knowledge article translation", Description = "Publish knowledge article translation")]
+        public void PublishKnowledgeTranslation(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] PublishKnowledgeTranslationRequest input)
+        {
+            var versions = ListAllArticlesVersions(authenticationCredentialsProviders, new GetArticleInfoRequest() { ArticleId = input.ArticleId });
+            var articleInDraft = versions.Records.Where(r => r.PublishStatus == "Draft" && r.Language == input.Locale).First();
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v57.0/actions/standard/publishKnowledgeArticles", Method.Post, authenticationCredentialsProviders);
+            request.AddJsonBody(new
+            {
+                inputs = new[]
+                {
+                    new
+                    {
+                        articleVersionIdList = new[]{ articleInDraft.Id },
+                        pubAction = "PUBLISH_TRANSLATION"
+                    } 
+                }
+            });
+            client.Execute(request);
+        }
+
         [Action("Get knowledge language settings", Description = "Get knowledge language settings")]
         public KnowledgeSettingsDto GetKnowledgeSettings(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders)
         {
             var client = new SalesforceClient(authenticationCredentialsProviders);
             var request = new SalesforceRequest($"/services/data/v57.0/knowledgeManagement/settings", Method.Get, authenticationCredentialsProviders);
             var settings = client.Get<KnowledgeSettingsDto>(request);
-            settings.DefaultLanguage = settings.DefaultLanguage.ToLower().Replace("_", "-");
-            settings.Languages.ForEach(l => { l.Name = l.Name.ToLower().Replace("_", "-"); });
             return settings;
         }
     }

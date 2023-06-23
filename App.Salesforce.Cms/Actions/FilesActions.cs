@@ -39,7 +39,7 @@ namespace Apps.Salesforce.Cms.Actions
             var fileInfo = GetFileInfo(authenticationCredentialsProviders, new GetFileInfoRequest() { FileId = input.FileId });
 
             var contentVersionRequest = new SalesforceRequest($"services/data/v57.0/query?q=SELECT FIELDS(ALL) FROM ContentVersion WHERE Id = '{fileInfo.LatestPublishedVersionId}'", Method.Get, authenticationCredentialsProviders);
-            var contentVersion = client.Get<RecordsCollectionDto<ContentVersionDto>>(contentVersionRequest).Records.FirstOrDefault();
+            var contentVersion = client.Get<RecordsCollectionDto<FileContentVersionDto>>(contentVersionRequest).Records.FirstOrDefault();
 
             var request = new SalesforceRequest($"services/data/v57.0/sobjects/ContentVersion/{fileInfo.LatestPublishedVersionId}/VersionData", Method.Get, authenticationCredentialsProviders);
             return new DownloadFileResponse() {

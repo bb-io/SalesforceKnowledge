@@ -1,4 +1,5 @@
-﻿using Blackbird.Applications.Sdk.Common.Authentication;
+﻿using App.Salesforce.Cms;
+using Blackbird.Applications.Sdk.Common.Authentication;
 using RestSharp;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ namespace Apps.Salesforce.Cms
 
         public void AddLocaleHeader(string locale)
         {
-            this.AddHeader("Accept-language", locale);
+            this.AddHeader("Accept-language", locale.ToLanguageHeaderFormat());
         }
     }
 }
