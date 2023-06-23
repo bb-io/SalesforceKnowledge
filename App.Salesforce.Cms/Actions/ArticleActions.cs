@@ -5,6 +5,7 @@ using Apps.Salesforce.Cms;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Authentication;
+using HtmlAgilityPack;
 using RestSharp;
 using System;
 using System.Collections.Generic;
@@ -107,8 +108,8 @@ namespace App.Salesforce.Cms.Actions
             {
                 if (item.Name.EndsWith("__c")) // custom field with content
                 {
-                    customContent += $"<h3>{item.Label}</h3>";
-                    customContent += $"<div>{item.Value}</div><br>";
+                    customContent += $"<div data-fieldName=\"{item.Name}\"><h3>{item.Label}</h3>";
+                    customContent += $"<div>{item.Value}</div></div>";
                 }
             }
             string htmlFile = $"<html><head><title>{articleObject.Title}</title></head><body>{customContent}</body></html>";
@@ -118,6 +119,26 @@ namespace App.Salesforce.Cms.Actions
                 File = Encoding.ASCII.GetBytes(htmlFile),
                 Filename = $"{articleObject.Title}.html"
             };
+        }
+
+        [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
+        public void TranslateFromHtml(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
+            [ActionParameter] TranslateFromHtmlRequest input)
+        {
+            var fileString = Encoding.ASCII.GetString(input.File);
+            var doc = new HtmlDocument();
+            doc.LoadHtml(fileString);
+            var title = doc.DocumentNode.SelectSingleNode("html/head/title").InnerText;
+            var body = doc.DocumentNode.SelectSingleNode("/html/body");
+
+            var fieldsToUpdate = new Dictionary<string, string>();
+            foreach(var nodeField in body.ChildNodes)
+            {
+                var fileName = nodeField.GetAttributeValue<string>("data-fieldName", string.Empty);
+                var text = nodeField.SelectSingleNode("div").InnerHtml;
+                fieldsToUpdate.Add(fileName, text);
+            }
+            UpdateMultipleArticleFields(authenticationCredentialsProviders, input.ArticleId, input.Locale, fieldsToUpdate);
         }
 
         [Action("Get articles not translated in language", Description = "Get articles not translated in specific language")]
@@ -206,25 +227,10 @@ namespace App.Salesforce.Cms.Actions
         public void UpdateKnowledgeArticleField(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders,
             [ActionParameter] UpdateKnowledgeArticleFieldRequest input)
         {
-            var draftVersion = CreatedArticleDraft(authenticationCredentialsProviders, new CreateArticleDraftRequest() 
-            { 
-                ArticleId = input.ArticleId,
-                Locale = input.Locale
-            });
-            var articleMetadata = GetArticleInfo(authenticationCredentialsProviders, new GetArticleInfoRequest() { ArticleId = input.ArticleId });
-            var client = new SalesforceClient(authenticationCredentialsProviders);
-            var request = new SalesforceRequest($"services/data/v58.0/sobjects/{articleMetadata.ArticleType}/{draftVersion.DraftVersionId}", Method.Patch, authenticationCredentialsProviders);
-            request.AddJsonBody(new Dictionary<string, string>()
+            UpdateMultipleArticleFields(authenticationCredentialsProviders, input.ArticleId, input.Locale, new Dictionary<string, string>()
             {
-                { input.FieldName, input.FieldValue }
+                {input.FieldName, input.FieldValue }
             });
-            client.Execute(request);
-            PublishKnowledgeTranslation(authenticationCredentialsProviders,
-                new PublishKnowledgeTranslationRequest()
-                {
-                    ArticleId = input.ArticleId,
-                    Locale = input.Locale
-                });
         }
 
         [Action("Get knowledge language settings", Description = "Get knowledge language settings")]
@@ -234,6 +240,27 @@ namespace App.Salesforce.Cms.Actions
             var request = new SalesforceRequest($"/services/data/v57.0/knowledgeManagement/settings", Method.Get, authenticationCredentialsProviders);
             var settings = client.Get<KnowledgeSettingsDto>(request);
             return settings;
+        }
+
+        private void UpdateMultipleArticleFields(IEnumerable<AuthenticationCredentialsProvider> authenticationCredentialsProviders, 
+            string articleId, string locale, Dictionary<string, string> fields)
+        {
+            var draftVersion = CreatedArticleDraft(authenticationCredentialsProviders, new CreateArticleDraftRequest()
+            {
+                ArticleId = articleId,
+                Locale = locale
+            });
+            var articleMetadata = GetArticleInfo(authenticationCredentialsProviders, new GetArticleInfoRequest() { ArticleId = articleId });
+            var client = new SalesforceClient(authenticationCredentialsProviders);
+            var request = new SalesforceRequest($"services/data/v58.0/sobjects/{articleMetadata.ArticleType}/{draftVersion.DraftVersionId}", Method.Patch, authenticationCredentialsProviders);
+            request.AddJsonBody(fields);
+            client.Execute(request);
+            PublishKnowledgeTranslation(authenticationCredentialsProviders,
+                new PublishKnowledgeTranslationRequest()
+                {
+                    ArticleId = articleId,
+                    Locale = locale
+                });
         }
     }
 }
