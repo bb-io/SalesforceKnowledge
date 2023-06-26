@@ -15,7 +15,7 @@ namespace Apps.Salesforce.Cms.Auth.OAuth2
             var parameters = new Dictionary<string, string>
             {
                 { "client_id", dict["clientId"] },
-                { "redirect_uri", "https://dev.blackbird.io/api-rest/connections/AuthorizationCode" },
+                { "redirect_uri", "https://sandbox.blackbird.io/api-rest/connections/AuthorizationCode" },
                 { "response_type", "code"},
                 { "state", dict["state"] },
             };
@@ -32,7 +32,7 @@ namespace Apps.Salesforce.Cms.Auth.OAuth2
 
             TokenUrl = $"https://{values["domainName"]}.my.salesforce.com/services/oauth2/token";
             const string grant_type = "authorization_code";
-            const string redirectUri = "https://dev.blackbird.io/api-rest/connections/AuthorizationCode";
+            const string redirectUri = "https://sandbox.blackbird.io/api-rest/connections/AuthorizationCode";
 
             var bodyParameters = new Dictionary<string, string>
             {
