@@ -1,38 +1,37 @@
-﻿using System;
-using Apps.Salesforce.Cms.Auth.OAuth2;
+﻿using Apps.Salesforce.Cms.Auth.OAuth2;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
 
-namespace Apps.Salesforce.Cms
+namespace Apps.Salesforce.Cms;
+
+public class SalesforceApplication : IApplication
 {
-	public class SalesforceApplication : IApplication
-	{
-		private readonly Dictionary<Type, object> _container;
-		public string Name
-		{
-			get => "Salesforce";
-			set { }
-		}
-        public SalesforceApplication()
+    private readonly Dictionary<Type, object> _container;
+    public string Name
+    {
+        get => "Salesforce";
+        set { }
+    }
+    public SalesforceApplication()
 
+    {
+        _container = LoadTypes();
+    }
+
+    public T GetInstance<T>()
+    {
+        if (!_container.TryGetValue(typeof(T), out var value))
         {
-            _container = LoadTypes();
+            throw new InvalidOperationException($"Instance of type '{typeof(T)}' not found");
         }
+        return (T)value;
+    }
 
-        public T GetInstance<T>()
-        {
-            if (!_container.TryGetValue(typeof(T), out var value))
-            {
-                throw new InvalidOperationException($"Instance of type '{typeof(T)}' not found");
-            }
-            return (T)value;
-        }
+    private Dictionary<Type, object> LoadTypes()
 
-        private Dictionary<Type, object> LoadTypes()
+    {
 
-        {
-
-            return new Dictionary<Type, object>()
+        return new Dictionary<Type, object>()
 
         {
 
@@ -43,6 +42,4 @@ namespace Apps.Salesforce.Cms
         };
 
     }
-    }
 }
-

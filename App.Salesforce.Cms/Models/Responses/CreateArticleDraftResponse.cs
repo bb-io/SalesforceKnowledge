@@ -1,13 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace App.Salesforce.Cms.Models.Responses;
 
-namespace App.Salesforce.Cms.Models.Responses
+public class CreateArticleDraftResponse
 {
-    public class CreateArticleDraftResponse
-    {
-        public string DraftVersionId { get; set; }
-    }
+    public string DraftVersionId { get; set; }
 }

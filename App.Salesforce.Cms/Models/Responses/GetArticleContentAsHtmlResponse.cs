@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using File = Blackbird.Applications.Sdk.Common.Files.File;
 
-namespace App.Salesforce.Cms.Models.Responses
+namespace App.Salesforce.Cms.Models.Responses;
+
+public class GetArticleContentAsHtmlResponse
 {
-    public class GetArticleContentAsHtmlResponse
-    {
-        public byte[] File { get; set; }
-
-        public string Filename { get; set; }
-    }
+    public File File { get; set; }
 }
