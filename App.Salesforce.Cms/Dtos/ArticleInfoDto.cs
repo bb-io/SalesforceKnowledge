@@ -1,23 +1,27 @@
-﻿namespace App.Salesforce.Cms.Dtos;
+﻿using Blackbird.Applications.Sdk.Common;
+
+namespace App.Salesforce.Cms.Dtos;
 
 public class ArticleInfoDto
 {
-    public AdditionalInformation AdditionalInformation { get; set; }
-    public string ArchivedArticleMasterVersionId { get; set; }
-    public string ArticleId { get; set; }
-    public string ArticleType { get; set; }
-    public string DraftArticleMasterVersionId { get; set; }
-    public string MasterLanguage { get; set; }
-    public string OnlineArticleMasterVersionId { get; set; }
-}
+    [Display("Additional information")]
+    public AdditionalInformationDto AdditionalInformation { get; set; }
 
-public class AdditionalInformation
-{
-    public bool CanArchive { get; set; }
-    public bool CanDelete { get; set; }
-    public bool CanEdit { get; set; }
-    public bool CanPublish { get; set; }
-    public bool CanUnpublish { get; set; }
-    public bool HasArchivedVersions { get; set; }
-    public bool HasTranslations { get; set; }
+    [Display("Archived article master version ID")]
+    public string ArchivedArticleMasterVersionId { get; set; }
+
+    [Display("Article ID")]
+    public string ArticleId { get; set; }
+
+    [Display("Article type")]
+    public string ArticleType { get; set; }
+
+    [Display("Draft article master version ID")]
+    public string DraftArticleMasterVersionId { get; set; }
+
+    [Display("Master language")]
+    public string MasterLanguage { get; set; }
+
+    [Display("Online article master version ID")]
+    public string OnlineArticleMasterVersionId { get; set; }
 }

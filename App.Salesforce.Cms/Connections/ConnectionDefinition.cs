@@ -1,58 +1,40 @@
-﻿using Blackbird.Applications.Sdk.Common.Authentication;
+﻿using App.Salesforce.Cms.Constants;
+using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Connections;
 
-namespace Apps.Salesforce.Cms.Connections;
+namespace App.Salesforce.Cms.Connections;
 
 public class OAuth2ConnectionDefinition : IConnectionDefinition
 {
     public IEnumerable<ConnectionPropertyGroup> ConnectionPropertyGroups => new List<ConnectionPropertyGroup>()
     {
-        new ConnectionPropertyGroup
+        new()
         {
             Name = "OAuth2",
             AuthenticationType = ConnectionAuthenticationType.OAuth2,
             ConnectionUsage = ConnectionUsage.Actions,
             ConnectionProperties = new List<ConnectionProperty>()
             {
-                new ConnectionProperty("domainName"),
-                new ConnectionProperty("clientId"),
-                new ConnectionProperty("clientSecret")
+                new(CredsNames.Domain) { DisplayName = "Domain name" },
+                new(CredsNames.ClientId) { DisplayName = "Client ID" },
+                new(CredsNames.ClientSecret) { DisplayName = "Client secret" }
             }
-
         }
     };
 
-    public IEnumerable<AuthenticationCredentialsProvider> CreateAuthorizationCredentialsProviders(Dictionary<string, string> values)
+    public IEnumerable<AuthenticationCredentialsProvider> CreateAuthorizationCredentialsProviders(
+        Dictionary<string, string> values)
     {
-        string token;
-        string domainName;
-        try
-        {
-            token = values.First(v => v.Key == "access_token").Value;
-        } catch
-        {
-            throw new Exception("access_token not found");
-        }
+        if(!values.ContainsKey(CredsNames.AccessToken))
+            throw new Exception("Access token not found");
+        
+        if(!values.ContainsKey(CredsNames.Domain))
+            throw new Exception("Domain name not found");
 
-        try
-        {
-            domainName = values.First(v => v.Key == "domainName").Value;
-        } catch
-        {
-            throw new Exception("domain name not found");
-        }
-            
-        yield return new AuthenticationCredentialsProvider(
-            AuthenticationCredentialsRequestLocation.Header,
-            "Authorization",
-            $"Bearer {token}"
-        );
-
-            
-        yield return new AuthenticationCredentialsProvider(
-            AuthenticationCredentialsRequestLocation.QueryString,
-            "domainName",
-            domainName
-        );
+        return values.Select(x =>
+            new AuthenticationCredentialsProvider(
+                AuthenticationCredentialsRequestLocation.None,
+                x.Key,
+                x.Value));
     }
 }

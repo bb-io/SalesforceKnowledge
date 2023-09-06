@@ -3,7 +3,5 @@
 public static class LanguageCodeStringExtension
 {
     public static string ToLanguageHeaderFormat(this string str)
-    {
-        return str.ToLower().Replace("_", "-");
-    }
+        => str.ToLower().Replace("_", "-");
 }

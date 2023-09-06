@@ -4,5 +4,5 @@ namespace App.Salesforce.Cms.Models.Responses;
 
 public class GetArticleCustomContent
 {
-    public IEnumerable<LayoutItem> Items { get; set; }
+    public IEnumerable<LayoutItemDto> Items { get; set; }
 }
