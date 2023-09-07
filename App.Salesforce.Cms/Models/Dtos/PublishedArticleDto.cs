@@ -1,6 +1,6 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Dtos;
+namespace App.Salesforce.Cms.Models.Dtos;
 
 public class PublishedArticleDto
 {

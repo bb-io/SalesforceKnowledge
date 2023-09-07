@@ -1,4 +1,4 @@
-﻿using App.Salesforce.Cms.Dtos;
+﻿using App.Salesforce.Cms.Models.Dtos;
 
 namespace App.Salesforce.Cms.Models.Responses;
 

@@ -1,5 +1,4 @@
 ﻿using System.Net.Mime;
-using App.Salesforce.Cms.Dtos;
 using App.Salesforce.Cms.Models.Requests;
 using App.Salesforce.Cms.Models.Responses;
 using Blackbird.Applications.Sdk.Common;
@@ -7,8 +6,10 @@ using Blackbird.Applications.Sdk.Common.Actions;
 using System.Text;
 using App.Salesforce.Cms.Actions.Base;
 using App.Salesforce.Cms.Api;
+using App.Salesforce.Cms.Models.Dtos;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Utils.Html.Extensions;
+using Newtonsoft.Json;
 using RestSharp;
 
 namespace App.Salesforce.Cms.Actions;
@@ -193,8 +194,8 @@ public class ArticleActions : SalesforceActions
     public async Task PublishKnowledgeTranslation([ActionParameter] PublishKnowledgeTranslationRequest input)
     {
         var versions = await ListAllArticlesVersions(new() { ArticleId = input.ArticleId });
-        var articleInDraft = versions.Records.Where(r => r.PublishStatus == "Draft" && r.Language == input.Locale)
-            .First();
+        var articleInDraft = versions.Records
+            .First(r => r.PublishStatus == "Draft" && r.Language == input.Locale);
 
         var pubAction = (await GetKnowledgeSettings()).DefaultLanguage == input.Locale
             ? "PUBLISH_ARTICLE"
@@ -220,6 +221,8 @@ public class ArticleActions : SalesforceActions
     public async Task<CreateArticleDraftResponse> CreatedArticleDraft(
         [ActionParameter] CreateArticleDraftRequest input)
     {
+        await PublishTranslationArticle(input.ArticleId, input.Locale);
+
         var versions = await ListAllArticlesVersions(new()
         {
             ArticleId = input.ArticleId
@@ -245,10 +248,18 @@ public class ArticleActions : SalesforceActions
             }
         });
 
-        var response = await Client.ExecuteAsync<List<DraftResponseDto>>(request);
+        var response = await Client.ExecuteAsync(request);
+
+        var draftData = JsonConvert.DeserializeObject<DraftResponseDto[]>(response.Content);
+        if (draftData?.FirstOrDefault()?.OutputValues.DraftId is null)
+        {
+            var error = JsonConvert.DeserializeObject<DraftErrorDto[]>(response.Content);
+            throw new(error.First().OutputValues.First().Value);
+        }
+
         return new()
         {
-            DraftVersionId = response.Data!.First().OutputValues.DraftId
+            DraftVersionId = draftData.First().OutputValues.DraftId
         };
     }
 
@@ -272,6 +283,8 @@ public class ArticleActions : SalesforceActions
 
         return Client.GetAsync<KnowledgeSettingsDto>(request)!;
     }
+
+    #region Utils
 
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields)
     {
@@ -297,4 +310,21 @@ public class ArticleActions : SalesforceActions
             Locale = locale
         });
     }
+    
+    private async Task PublishTranslationArticle(string articleId, string locale)
+    {
+        await SubmitToTranslation(new()
+        {
+            ArticleId = articleId,
+            Locale = locale
+        });
+
+        await PublishKnowledgeTranslation(new()
+        {
+            ArticleId = articleId,
+            Locale = locale
+        });
+    }
+
+    #endregion
 }
