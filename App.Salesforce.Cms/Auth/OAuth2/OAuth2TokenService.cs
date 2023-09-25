@@ -13,7 +13,7 @@ public class OAuth2TokenService : IOAuth2TokenService
     {
         _tokenUrl = $"https://{values[CredsNames.Domain]}.my.salesforce.com/services/oauth2/token";
         const string grant_type = "authorization_code";
-        const string redirectUri = "https://dev.blackbird.io/api-rest/connections/AuthorizationCode";
+        const string redirectUri = "https://sandbox.blackbird.io/api-rest/connections/AuthorizationCode";
 
         var bodyParameters = new Dictionary<string, string>
         {
@@ -31,7 +31,7 @@ public class OAuth2TokenService : IOAuth2TokenService
         => values.TryGetValue(CredsNames.ExpiresAt, out var expireValue) &&
            DateTime.UtcNow > DateTime.Parse(expireValue);
 
-    public Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values,
+    public async Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values,
         CancellationToken cancellationToken)
     {
         const string grant_type = "refresh_token";
@@ -49,7 +49,10 @@ public class OAuth2TokenService : IOAuth2TokenService
             { "refresh_token", refreshToken },
         };
 
-        return RequestToken(bodyParameters, cancellationToken);
+        var result = await RequestToken(bodyParameters, cancellationToken);
+        result["refresh_token"] = refreshToken;
+
+        return result;
     }
 
     public Task RevokeToken(Dictionary<string, string> values)

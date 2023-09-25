@@ -14,7 +14,7 @@ public class OAuth2AuthorizeService : IOAuth2AuthorizeService
         var parameters = new Dictionary<string, string>
         {
             { "client_id", dict[CredsNames.ClientId] },
-            { "redirect_uri", "https://dev.blackbird.io/api-rest/connections/AuthorizationCode" },
+            { "redirect_uri", "https://sandbox.blackbird.io/api-rest/connections/AuthorizationCode" },
             { "response_type", "code" },
             { "state", dict["state"] },
         };
