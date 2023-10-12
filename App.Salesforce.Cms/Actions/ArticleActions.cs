@@ -182,7 +182,9 @@ public class ArticleActions : SalesforceActions
                 {
                     articleId = input.ArticleId,
                     language = input.Locale,
-                    assigneeId = input.AssigneeId
+                    assigneeId = input.AssigneeId,
+                    dueDate = input.DueDate,
+                    sendEmailNotification = input.SendEmailNotification
                 }
             }
         });
@@ -209,7 +211,8 @@ public class ArticleActions : SalesforceActions
             {
                 new
                 {
-                    articleVersionIdList = new[] { articleInDraft.Id }, pubAction
+                    articleVersionIdList = new[] { articleInDraft.Id },
+                    pubAction
                 }
             }
         });
@@ -242,7 +245,7 @@ public class ArticleActions : SalesforceActions
                 new
                 {
                     action = isTranslation ? "EDIT_AS_DRAFT_TRANSLATION" : "EDIT_AS_DRAFT_ARTICLE",
-                    unpublish = false,
+                    unpublish = input.Unpublish ?? false,
                     articleVersionId = articlePublished.Id
                 }
             }
