@@ -211,8 +211,9 @@ public class ArticleActions : SalesforceActions
             {
                 new
                 {
+                    pubAction,
                     articleVersionIdList = new[] { articleInDraft.Id },
-                    pubAction
+                    pubDate = input.PubDate?.ToString("yyyy-MM-ddTHH:mm:sszzz")
                 }
             }
         });
