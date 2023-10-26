@@ -4,6 +4,10 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Product>Blackbird Salesforce Knowledge</Product>
+    <Version>1.0.0</Version>
+    <Description>Create, manage, and share a centralized repository of information and content to facilitate better customer support and internal knowledge sharing</Description>
+    <AssemblyName>Apps.Salesforce.Cms</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
