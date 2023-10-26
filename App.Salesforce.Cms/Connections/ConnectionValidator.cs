@@ -1,5 +1,4 @@
 using App.Salesforce.Cms.Api;
-using App.Salesforce.Cms.Models.Dtos;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Connections;
 using RestSharp;
