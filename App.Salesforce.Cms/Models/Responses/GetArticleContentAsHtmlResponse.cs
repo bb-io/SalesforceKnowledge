@@ -1,8 +1,8 @@
-﻿using File = Blackbird.Applications.Sdk.Common.Files.File;
+﻿using Blackbird.Applications.Sdk.Common.Files;
 
 namespace App.Salesforce.Cms.Models.Responses;
 
 public class GetArticleContentAsHtmlResponse
 {
-    public File File { get; set; }
+    public FileReference File { get; set; }
 }
