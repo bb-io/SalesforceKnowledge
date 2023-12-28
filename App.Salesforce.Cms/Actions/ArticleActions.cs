@@ -11,14 +11,18 @@ using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Utils.Html.Extensions;
 using Newtonsoft.Json;
 using RestSharp;
+using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 
 namespace App.Salesforce.Cms.Actions;
 
 [ActionList]
 public class ArticleActions : SalesforceActions
 {
-    public ArticleActions(InvocationContext invocationContext) : base(invocationContext)
+    private readonly IFileManagementClient _fileManagementClient;
+    public ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient) : base(invocationContext)
     {
+        _fileManagementClient = fileManagementClient;
     }
 
     #region List actions
@@ -128,20 +132,16 @@ public class ArticleActions : SalesforceActions
 
         var htmlFile = (articleObject.Title, customContent).AsHtml();
 
-        return new()
-        {
-            File = new(Encoding.ASCII.GetBytes(htmlFile))
-            {
-                Name = $"{articleObject.Title}.html",
-                ContentType = MediaTypeNames.Text.Html
-            },
-        };
+        using var stream = new MemoryStream(Encoding.ASCII.GetBytes(htmlFile));
+        var file = await _fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
+        return new() { File = file };
     }
 
     [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
     public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input)
     {
-        var doc = Encoding.ASCII.GetString(input.File.Bytes).AsHtmlDocument();
+        var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
+        var doc = Encoding.ASCII.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
         var fieldsToUpdate = new Dictionary<string, string>();
