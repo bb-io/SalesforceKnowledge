@@ -6,7 +6,24 @@ Blackbird is the new automation backbone for the language technology industry. B
 
 <!-- begin docs -->
 
-Documentation coming soon.
+## Actions
+
+### Article
+
+-**List all master knowledge articles** List all master knowledge articles
+-**List all published articles translations** List all published articles translations
+-**List all published articles** List all published articles
+-**List knowledge article versions** List knowledge article versions
+-**Get article info** Get article info by id
+-**Get all article content as object** Get all article content as object by id
+-**Get article custom content as object** Get article custom content only as object by id
+-**Get article content as HTML file** Get article content as HTML file by id
+-**Translate knowledge article from HTML file** Translate knowledge article from HTML file
+-**Submit knowledge article to translation** Submit knowledge article to translation
+-**Publish knowledge article draft** Publish knowledge article draft
+-**Create draft for knowledge article** Create draft for knowledge article
+-**Update knowledge article field** Update knowledge article field
+-**Get knowledge language settings** Get knowledge language settings
 
 ## Feedback
 
