@@ -1,0 +1,9 @@
+{
+  "ConnectionDefinition": {
+    "domainName": "",
+    "clientId": "",
+    "clientSecret": "",
+    "access_token": ""
+  },
+  "TestFolder": "TestFiles"
+}

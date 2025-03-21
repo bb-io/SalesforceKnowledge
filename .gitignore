@@ -354,3 +354,4 @@ healthchecksdb
 *.DS_Store
 *.dmg
 *.env
+/Tests.Salesforce.Cms/appsettings.json
