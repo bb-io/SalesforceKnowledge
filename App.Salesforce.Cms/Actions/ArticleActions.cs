@@ -28,17 +28,17 @@ public class ArticleActions : SalesforceActions
 
     #region List actions
 
-    [Action("List all master knowledge articles", Description = "List all master knowledge articles")]
+    [Action("Search all master knowledge articles", Description = "Search all master knowledge articles")] 
     public Task<ListAllArticlesResponse> ListAllArticles()
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        return Client.GetAsync<ListAllArticlesResponse>(request)!;
+        return Client.ExecuteWithErrorHandling<ListAllArticlesResponse>(request)!;
     }
 
-    [Action("List all published articles translations", Description = "List all published articles translations")]
+    [Action("Search all published articles translations", Description = "Search all published articles translations")]
     public async Task<ListAllArticlesResponse> ListPublishedArticlesTranslations(
         [ActionParameter] ListPublishedTranslationsRequest input)
     {
@@ -48,7 +48,7 @@ public class ArticleActions : SalesforceActions
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         request.AddLocaleHeader(input.Locale);
 
-        var publishedArticles = await Client.GetAsync<PublishedArticlesResponse>(request);
+        var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
         return new()
         {
             Records = publishedArticles!.Articles
@@ -56,7 +56,7 @@ public class ArticleActions : SalesforceActions
         };
     }
 
-    [Action("List all published articles", Description = "List all published articles")]
+    [Action("Search all published articles", Description = "Search all published articles")]
     public async Task<ListAllArticlesResponse> ListAllPublishedArticles()
     {
         var languageDetails = await GetKnowledgeSettings();
@@ -68,7 +68,7 @@ public class ArticleActions : SalesforceActions
             });
     }
 
-    [Action("List knowledge article versions", Description = "List knowledge article versions")]
+    [Action("Search knowledge article versions", Description = "Search knowledge article versions")]
     public async Task<ListAllArticlesVersionsResponse?> ListAllArticlesVersions(
         [ActionParameter] ArticleRequest input)
     {
@@ -79,7 +79,7 @@ public class ArticleActions : SalesforceActions
         var endpoint = $"services/data/v57.0/query?q={query}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        return await Client.GetAsync<ListAllArticlesVersionsResponse>(request);
+        return await Client.ExecuteWithErrorHandling<ListAllArticlesVersionsResponse>(request);
     }
 
     #endregion
@@ -90,7 +90,7 @@ public class ArticleActions : SalesforceActions
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        return Client.GetAsync<ArticleInfoDto>(request)!;
+        return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
     [Action("Get all article content as object", Description = "Get all article content as object by id")]
@@ -100,7 +100,7 @@ public class ArticleActions : SalesforceActions
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         request.AddLocaleHeader(input.Locale);
 
-        return Client.GetAsync<ArticleContentDto>(request)!;
+        return Client.ExecuteWithErrorHandling<ArticleContentDto>(request)!;
     }
 
     [Action("Get article custom content as object", Description = "Get article custom content only as object by id")]
@@ -131,7 +131,19 @@ public class ArticleActions : SalesforceActions
             }
         }
 
-        var htmlFile = (articleObject.Title, customContent).AsHtml();
+        var metaTags = $@"<meta name=""blackbird-article-id"" content=""{input.ArticleId}"" /><meta name=""blackbird-locale"" content=""{input.Locale}"" />";
+
+        var htmlFile = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{articleObject.Title}</title>
+    {metaTags}
+</head>
+<body>
+    {customContent}
+</body>
+</html>";
 
         using var stream = new MemoryStream(Encoding.ASCII.GetBytes(htmlFile));
         var file = await _fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
@@ -146,11 +158,15 @@ public class ArticleActions : SalesforceActions
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
         var fieldsToUpdate = new Dictionary<string, string>();
-        foreach (var nodeField in body.ChildNodes)
+        foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlAgilityPack.HtmlNodeType.Element))
         {
-            var fileName = nodeField.GetAttributeValue<string>("data-fieldName", string.Empty);
-            var text = nodeField.SelectSingleNode("div").InnerHtml;
-            fieldsToUpdate.Add(fileName, text);
+            var fileName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
+            var divNode = nodeField.SelectSingleNode("div");
+            if (divNode != null)
+            {
+                var text = divNode.InnerHtml;
+                fieldsToUpdate.Add(fileName, text);
+            }
         }
 
         return UpdateMultipleArticleFields(input.ArticleId, input.Locale, fieldsToUpdate);
@@ -170,8 +186,9 @@ public class ArticleActions : SalesforceActions
         };
     }
 
+
     [Action("Submit knowledge article to translation", Description = "Submit knowledge article to translation")]
-    public Task SubmitToTranslation([ActionParameter] SubmitToTranslationRequest input)
+    public async Task SubmitToTranslation([ActionParameter] SubmitToTranslationRequest input)
     {
         var endpoint = "services/data/v57.0/actions/standard/submitKnowledgeArticleForTranslation";
         var request = new SalesforceRequest(endpoint, Method.Post, Creds);
@@ -190,8 +207,9 @@ public class ArticleActions : SalesforceActions
             }
         });
 
-        return Client.ExecuteAsync(request);
+        await Client.ExecuteWithErrorHandling(request);
     }
+
 
     [Action("Publish knowledge article draft", Description = "Publish knowledge article draft")]
     public async Task PublishKnowledgeTranslation([ActionParameter] PublishKnowledgeTranslationRequest input)
@@ -219,7 +237,7 @@ public class ArticleActions : SalesforceActions
             }
         });
 
-        await Client.ExecuteAsync(request);
+        await Client.ExecuteWithErrorHandling(request);
     }
 
     [Action("Create draft for knowledge article", Description = "Create draft for knowledge article")]
@@ -253,7 +271,7 @@ public class ArticleActions : SalesforceActions
             }
         });
 
-        var response = await Client.ExecuteAsync(request);
+        var response = await Client.ExecuteWithErrorHandling(request);
 
         var draftData = JsonConvert.DeserializeObject<DraftResponseDto[]>(response.Content);
         if (draftData?.FirstOrDefault()?.OutputValues.DraftId is null)
@@ -280,13 +298,14 @@ public class ArticleActions : SalesforceActions
             });
     }
 
+
     [Action("Get knowledge language settings", Description = "Get knowledge language settings")]
     public Task<KnowledgeSettingsDto> GetKnowledgeSettings()
     {
         var endpoint = "/services/data/v57.0/knowledgeManagement/settings";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        return Client.GetAsync<KnowledgeSettingsDto>(request)!;
+        return Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(request)!;
     }
 
     #region Utils
@@ -296,6 +315,7 @@ public class ArticleActions : SalesforceActions
     {
         return InvocationContext.AuthenticationCredentialsProviders.ToList();
     }
+
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields)
     {
         var draftVersion = await CreatedArticleDraft(new()
@@ -313,7 +333,7 @@ public class ArticleActions : SalesforceActions
         var request = new SalesforceRequest(endpoint, Method.Patch, Creds);
         request.AddJsonBody(fields);
 
-        await Client.ExecuteAsync(request);
+        await Client.ExecuteWithErrorHandling(request);
         await PublishKnowledgeTranslation(new()
         {
             ArticleId = articleId,
