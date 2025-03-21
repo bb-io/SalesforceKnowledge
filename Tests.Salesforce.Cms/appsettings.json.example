@@ -1,7 +1,9 @@
 {
-    "ConnectionDefinition": {
-        "Authorization": "",
-        "api_endpoint": ""
-    },
-    "TestFolder": "TestFiles"
+  "ConnectionDefinition": {
+    "domainName": "",
+    "clientId": "",
+    "clientSecret": "",
+    "access_token": ""
+  },
+  "TestFolder": "TestFiles"
 }
