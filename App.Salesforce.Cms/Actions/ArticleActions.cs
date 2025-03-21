@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using RestSharp;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Applications.Sdk.Common.Authentication;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -290,6 +291,11 @@ public class ArticleActions : SalesforceActions
 
     #region Utils
 
+    [Action("DEBUG: Get auth data", Description = "Can be used only for debugging purposes.")]
+    public List<AuthenticationCredentialsProvider> GetAuthenticationCredentialsProviders()
+    {
+        return InvocationContext.AuthenticationCredentialsProviders.ToList();
+    }
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields)
     {
         var draftVersion = await CreatedArticleDraft(new()

@@ -5,6 +5,8 @@ VisualStudioVersion = 17.5.33424.131
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Apps.Salesforce.Cms", "App.Salesforce.Cms\Apps.Salesforce.Cms.csproj", "{06BBC46A-063B-4EC7-AFBD-041985E649F4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests.Salesforce.Cms", "Tests.Salesforce.Cms\Tests.Salesforce.Cms.csproj", "{9C526BB6-36E8-4678-A16B-BB761F0A9D65}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{06BBC46A-063B-4EC7-AFBD-041985E649F4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{06BBC46A-063B-4EC7-AFBD-041985E649F4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{06BBC46A-063B-4EC7-AFBD-041985E649F4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9C526BB6-36E8-4678-A16B-BB761F0A9D65}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9C526BB6-36E8-4678-A16B-BB761F0A9D65}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9C526BB6-36E8-4678-A16B-BB761F0A9D65}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9C526BB6-36E8-4678-A16B-BB761F0A9D65}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
