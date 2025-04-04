@@ -8,6 +8,19 @@ Blackbird is the new automation backbone for the language technology industry. B
 
 Salesforce as a CMS or knowledge base offers robust tools for managing and disseminating content, enabling organizations to create, organize, and share information efficiently. It integrates with the CRM to provide a seamless experience for managing customer interactions and support documentation. The platform includes features like customizable templates, real-time collaboration, powerful search capabilities, and analytics to track content performance. These tools help businesses maintain a comprehensive and accessible knowledge base, improving customer service and internal knowledge management.
 
+## Before setting up
+
+Before you can connect you will need:
+
+• Domain name
+• Client ID
+• Client secret
+
+To get this, create a connected app on Salesforce - find instructions [here](https://help.salesforce.com/s/articleView?id=sf.connected_app_create_api_integration.htm&type=5). Walk through the steps to create a connected app, you must select the enable OAuth settings options, then select the permissions you would like to give access to to your connection. Additionally, in the redirect URI selection, fill in the following URI: `https://bridge.blackbird.io/api/AuthorizationCode`
+ 
+Once the connected app is created, you can get the Client ID (consumer key) and Client secret (consumer secret). To access the consumer key, from the App Manager, find the connected app, and select `View` from the dropdown. Then click `Manage Consumer Details`. You’re sometimes prompted to verify your identity before you can view the consumer key.
+ 
+
 ## Actions
 
 ### Article

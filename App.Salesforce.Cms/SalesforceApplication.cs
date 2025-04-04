@@ -21,7 +21,7 @@ public class SalesforceApplication : BaseInvocable, IApplication, ICategoryProvi
         get => "Salesforce";
         set { }
     }
-
+    
     public SalesforceApplication(InvocationContext invocationContext) : base(invocationContext)
     {
         _container = LoadTypes();
