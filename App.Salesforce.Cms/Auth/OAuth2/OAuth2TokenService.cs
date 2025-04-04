@@ -1,25 +1,27 @@
 ﻿using App.Salesforce.Cms.Constants;
+using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
+using Blackbird.Applications.Sdk.Common.Invocation;
 using Newtonsoft.Json;
 
 namespace App.Salesforce.Cms.Auth.OAuth2;
 
-public class OAuth2TokenService : IOAuth2TokenService
+public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvocable(InvocationContext), IOAuth2TokenService
 {
     private static string? _tokenUrl;
 
     public Task<Dictionary<string, string>> RequestToken(string state, string code, Dictionary<string, string> values,
         CancellationToken cancellationToken)
     {
-        _tokenUrl = $"https://{values[CredsNames.Domain]}.my.salesforce.com/services/oauth2/token";
-        const string grant_type = "authorization_code";
-        const string redirectUri = "https://sandbox.blackbird.io/api-rest/connections/AuthorizationCode";
+        _tokenUrl = $"https://{values[CredNames.Domain]}.my.salesforce.com/services/oauth2/token";
 
+        const string grant_type = "authorization_code";
+        var redirectUri = $"{InvocationContext.UriInfo.BridgeServiceUrl.ToString().TrimEnd('/')}/AuthorizationCode";
         var bodyParameters = new Dictionary<string, string>
         {
             { "grant_type", grant_type },
-            { "client_id", values[CredsNames.ClientId] },
-            { "client_secret", values[CredsNames.ClientSecret] },
+            { "client_id", values[CredNames.ClientId] },
+            { "client_secret", values[CredNames.ClientSecret] },
             { "redirect_uri", redirectUri },
             { "code", code }
         };
@@ -28,24 +30,24 @@ public class OAuth2TokenService : IOAuth2TokenService
     }
 
     public bool IsRefreshToken(Dictionary<string, string> values)
-        => values.TryGetValue(CredsNames.ExpiresAt, out var expireValue) &&
+        => values.TryGetValue(CredNames.ExpiresAt, out var expireValue) &&
            DateTime.UtcNow > DateTime.Parse(expireValue);
 
     public async Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values,
         CancellationToken cancellationToken)
     {
         const string grant_type = "refresh_token";
-
-        _tokenUrl = $"https://{values[CredsNames.Domain]}.my.salesforce.com/services/oauth2/token";
-
-        if (!values.TryGetValue(CredsNames.RefreshToken, out var refreshToken))
+        _tokenUrl = $"https://{values[CredNames.Domain]}.my.salesforce.com/services/oauth2/token";
+        if (!values.TryGetValue(CredNames.RefreshToken, out var refreshToken))
+        {
             throw new("No refresh token found, you should update your OAuth app scopes to give Blackbird access to it");
+        }
 
         var bodyParameters = new Dictionary<string, string>
         {
             { "grant_type", grant_type },
-            { "client_id", values[CredsNames.ClientId] },
-            { "client_secret", values[CredsNames.ClientSecret] },
+            { "client_id", values[CredNames.ClientId] },
+            { "client_secret", values[CredNames.ClientSecret] },
             { "refresh_token", refreshToken },
         };
 
@@ -71,9 +73,9 @@ public class OAuth2TokenService : IOAuth2TokenService
         var resultDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent)
                                ?? throw new InvalidOperationException($"Invalid response content: {responseContent}");
 
-        var issuedAt = long.Parse(resultDictionary[CredsNames.IssuedAt]);
+        var issuedAt = long.Parse(resultDictionary[CredNames.IssuedAt]);
         var expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(issuedAt).AddHours(2).DateTime;
-        resultDictionary.Add(CredsNames.ExpiresAt, expiresAt.ToString());
+        resultDictionary.Add(CredNames.ExpiresAt, expiresAt.ToString());
 
         return resultDictionary;
     }

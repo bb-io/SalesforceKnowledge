@@ -24,7 +24,7 @@ namespace App.Salesforce.Cms.Api
 
         private static Uri GetUri(IEnumerable<AuthenticationCredentialsProvider> creds)
         {
-            var domainName = creds.Get(CredsNames.Domain).Value;
+            var domainName = creds.Get(CredNames.Domain).Value;
             return new Uri($"https://{domainName}.my.salesforce.com");
         }
 
