@@ -10,7 +10,7 @@ public class SalesforceRequest : RestRequest
     public SalesforceRequest(string endpoint, Method method, IEnumerable<AuthenticationCredentialsProvider> creds) :
         base(endpoint, method)
     {
-        var token = creds.Get(CredsNames.AccessToken).Value;
+        var token = creds.Get(CredNames.AccessToken).Value;
         this.AddHeader("Authorization", $"Bearer {token}");
     }
 
