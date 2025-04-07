@@ -13,7 +13,9 @@ Salesforce as a CMS or knowledge base offers robust tools for managing and disse
 Before you can connect you will need:
 
 • Domain name
+
 • Client ID
+
 • Client secret
 
 To get this, create a connected app on Salesforce - find instructions [here](https://help.salesforce.com/s/articleView?id=sf.connected_app_create_api_integration.htm&type=5). Walk through the steps to create a connected app, you must select the enable OAuth settings options, then select the permissions you would like to give access to to your connection. Additionally, in the redirect URI selection, fill in the following URI: `https://bridge.blackbird.io/api/AuthorizationCode`
