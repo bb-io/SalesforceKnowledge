@@ -52,6 +52,11 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 - **Update knowledge article field** Update knowledge article field
 - **Get knowledge language settings** Get knowledge language settings
 
+### Events
+
+- **On articles creted**
+- **On articles updated**
+
 ## Feedback
 
 Do you want to use this app or do you have feedback on our implementation? Reach out to us using the [established channels](https://www.blackbird.io/) or create an issue.
