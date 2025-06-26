@@ -132,7 +132,7 @@ public class ArticleActions : SalesforceActions
             }
         }
 
-        var metaTags = $@"<meta name=""blackbird-article-id"" content=""{input.ArticleId}"" /><meta name=""blackbird-locale"" content=""{input.Locale}"" />";
+        var metaTags = $@"<meta name=""blackbird-article-id"" content=""{input.ArticleId}"" /><meta name=""blackbird-locale"" content=""{input.Locale}"" /><meta charset=""UTF-8"">";
 
         var htmlFile = $@"
 <!DOCTYPE html>
@@ -146,7 +146,7 @@ public class ArticleActions : SalesforceActions
 </body>
 </html>";
 
-        using var stream = new MemoryStream(Encoding.ASCII.GetBytes(htmlFile));
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(htmlFile));
         var file = await _fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
         return new() { File = file };
     }
@@ -155,7 +155,7 @@ public class ArticleActions : SalesforceActions
     public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input)
     {
         var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
-        var doc = Encoding.ASCII.GetString(fileBytes).AsHtmlDocument();
+        var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
         var fieldsToUpdate = new Dictionary<string, string>();
@@ -166,7 +166,7 @@ public class ArticleActions : SalesforceActions
             if (divNode != null)
             {
                 var text = divNode.InnerHtml;
-                fieldsToUpdate.Add(fileName, WebUtility.HtmlEncode(text));
+                fieldsToUpdate.Add(fileName, text);
             }
         }
 
