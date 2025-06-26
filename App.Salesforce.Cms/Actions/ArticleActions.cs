@@ -14,6 +14,7 @@ using RestSharp;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.Sdk.Common.Authentication;
+using System.Net;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -165,7 +166,7 @@ public class ArticleActions : SalesforceActions
             if (divNode != null)
             {
                 var text = divNode.InnerHtml;
-                fieldsToUpdate.Add(fileName, text);
+                fieldsToUpdate.Add(fileName, WebUtility.HtmlEncode(text));
             }
         }
 
