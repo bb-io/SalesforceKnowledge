@@ -16,6 +16,7 @@ using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using System.Net;
 using Apps.Salesforce.Cms.Models.Requests;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -169,6 +170,15 @@ public class ArticleActions : SalesforceActions
         var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
+
+        var articleId = string.IsNullOrEmpty(input.ArticleId)
+        ? doc.DocumentNode
+              .SelectSingleNode("//meta[@name='blackbird-article-id']")
+              ?.GetAttributeValue("content", null)
+        : input.ArticleId;
+
+        if (string.IsNullOrEmpty(articleId))
+            throw new PluginMisconfigurationException("Article ID is required, it needs to be present either in the input or HTML file.");
 
         var fieldsToUpdate = new Dictionary<string, string>();
         foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlAgilityPack.HtmlNodeType.Element))
