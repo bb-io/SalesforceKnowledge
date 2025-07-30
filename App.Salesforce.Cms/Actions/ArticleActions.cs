@@ -15,6 +15,7 @@ using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using System.Net;
+using Apps.Salesforce.Cms.Models.Requests;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -58,15 +59,26 @@ public class ArticleActions : SalesforceActions
     }
 
     [Action("Search all published articles", Description = "Search all published articles")]
-    public async Task<ListAllArticlesResponse> ListAllPublishedArticles()
+    public async Task<ListAllArticlesResponse> ListAllPublishedArticles(searchFilter input)
     {
         var languageDetails = await GetKnowledgeSettings();
 
-        return await ListPublishedArticlesTranslations(
+        var result = await ListPublishedArticlesTranslations(
             new()
             {
                 Locale = languageDetails.DefaultLanguage
             });
+
+        if (input.PublishedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedAfter);
+        }
+        if (input.PublishedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedBefore);
+        }
+
+        return result;
     }
 
     [Action("Search knowledge article versions", Description = "Search knowledge article versions")]
@@ -100,7 +112,7 @@ public class ArticleActions : SalesforceActions
         var endpoint = $"services/data/v57.0/support/knowledgeArticles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         request.AddLocaleHeader(input.Locale);
-
+        var response = Client.Execute(request);
         return Client.ExecuteWithErrorHandling<ArticleContentDto>(request)!;
     }
 
@@ -178,7 +190,7 @@ public class ArticleActions : SalesforceActions
     public async Task<ListAllArticlesResponse> GetArticlesNotTranslated(
         [ActionParameter] ListPublishedTranslationsRequest input)
     {
-        var allArticles = (await ListAllPublishedArticles()).Records;
+        var allArticles = (await ListAllPublishedArticles(new searchFilter())).Records;
         var allTranslations = (await ListPublishedArticlesTranslations(input)).Records;
 
         return new()
