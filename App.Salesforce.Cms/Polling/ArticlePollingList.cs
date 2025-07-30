@@ -50,7 +50,8 @@ namespace Apps.Salesforce.Cms.Polling
             }
 
             var newArticles = articles
-                .Where(a => DateTime.Parse(a.CreatedDate, null, DateTimeStyles.AdjustToUniversal) > request.Memory.LastInteractionDate)
+                .Where(a => DateTime.Parse(a.CreatedDate, null, DateTimeStyles.AdjustToUniversal) > request.Memory.LastInteractionDate
+                && a.IsDeleted != true)
                 .ToArray();
 
             if (newArticles.Any())
@@ -105,7 +106,8 @@ namespace Apps.Salesforce.Cms.Polling
             }
 
             var updatedArticles = articles
-                .Where(a => DateTime.Parse(a.LastModifiedDate, null, DateTimeStyles.AdjustToUniversal) > request.Memory.LastInteractionDate)
+                .Where(a => DateTime.Parse(a.LastModifiedDate, null, DateTimeStyles.AdjustToUniversal) > request.Memory.LastInteractionDate
+                && a.IsDeleted != true)
                 .ToArray();
 
             if (updatedArticles.Any())
