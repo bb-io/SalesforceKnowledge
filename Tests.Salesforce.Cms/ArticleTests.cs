@@ -19,11 +19,11 @@ namespace Tests.Salesforce.Cms
         {
             var action = new ArticleActions(InvocationContext, FileManager);
 
-            var result = await action.ListAllArticles();
+            var result = await action.ListAllArticles(new masterArticleSearchFilters());
 
             foreach (var article in result.Records)
             {
-                Console.WriteLine($"{article.Id} - {article.Title}");
+                Console.WriteLine($"{article.Id}");
                 Assert.IsNotNull(article);
             }
         }

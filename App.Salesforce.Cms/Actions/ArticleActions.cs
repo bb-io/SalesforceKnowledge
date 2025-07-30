@@ -31,14 +31,53 @@ public class ArticleActions : SalesforceActions
 
     #region List actions
 
-    [Action("Search all master knowledge articles", Description = "Search all master knowledge articles")] 
-    public Task<ListAllArticlesResponse> ListAllArticles()
+    [Action("Search master knowledge articles", Description = "Search all master knowledge articles")] 
+    public async Task<ListAllMasterArticlesResponse> ListAllArticles(masterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        return Client.ExecuteWithErrorHandling<ListAllArticlesResponse>(request)!;
+
+        var result =  await Client.ExecuteWithErrorHandling<ListAllMasterArticlesResponse>(request)!;
+        result.Records = result.Records.Where(a => a.IsDeleted != true);
+
+        #region filters
+        if (input.CreatedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.CreatedDate < input.CreatedBefore.Value);
+        }
+        if (input.CreatedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.CreatedDate > input.CreatedAfter.Value);
+        }
+        if (input.UpdatedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastModifiedDate < input.UpdatedBefore.Value);
+        }
+        if (input.UpdatedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastModifiedDate > input.UpdatedAfter.Value);
+        }
+        if (input.PublishedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastPublishedDate < input.PublishedBefore.Value);
+        }
+        if (input.PublishedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastPublishedDate > input.PublishedAfter.Value);
+        }
+        if (input.Published.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastPublishedDate.HasValue);
+        }
+        if (input.Archived.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.ArchivedDate.HasValue);
+        }
+        #endregion
+
+        return result;
     }
 
     [Action("Search all published articles translations", Description = "Search all published articles translations")]
@@ -59,7 +98,7 @@ public class ArticleActions : SalesforceActions
         };
     }
 
-    [Action("Search all published articles", Description = "Search all published articles")]
+    [Action("Search published articles", Description = "Search all published articles")]
     public async Task<ListAllArticlesResponse> ListAllPublishedArticles(searchFilter input)
     {
         var languageDetails = await GetKnowledgeSettings();
@@ -72,11 +111,11 @@ public class ArticleActions : SalesforceActions
 
         if (input.PublishedAfter.HasValue)
         {
-            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedAfter);
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedAfter.Value);
         }
         if (input.PublishedBefore.HasValue)
         {
-            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedBefore);
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedBefore.Value);
         }
 
         return result;
