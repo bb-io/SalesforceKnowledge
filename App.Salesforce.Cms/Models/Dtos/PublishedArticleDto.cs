@@ -30,4 +30,10 @@ public class PublishedArticleDto
 
     [Display("View score")]
     public double ViewScore { get; set; }
+
+    [Display("Last published date")]
+    public DateTime LastPublishedDate { get; set; }
+
+    [Display("Summary")]
+    public string? Summary { get; set; }
 }

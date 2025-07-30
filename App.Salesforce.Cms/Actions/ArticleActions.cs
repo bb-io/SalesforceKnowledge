@@ -15,6 +15,8 @@ using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using System.Net;
+using Apps.Salesforce.Cms.Models.Requests;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -29,14 +31,53 @@ public class ArticleActions : SalesforceActions
 
     #region List actions
 
-    [Action("Search all master knowledge articles", Description = "Search all master knowledge articles")] 
-    public Task<ListAllArticlesResponse> ListAllArticles()
+    [Action("Search master knowledge articles", Description = "Search all master knowledge articles")] 
+    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter]masterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        return Client.ExecuteWithErrorHandling<ListAllArticlesResponse>(request)!;
+
+        var result =  await Client.ExecuteWithErrorHandling<ListAllMasterArticlesResponse>(request)!;
+        result.Records = result.Records.Where(a => a.IsDeleted != true);
+
+        #region filters
+        if (input.CreatedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.CreatedDate < input.CreatedBefore.Value);
+        }
+        if (input.CreatedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.CreatedDate > input.CreatedAfter.Value);
+        }
+        if (input.UpdatedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastModifiedDate < input.UpdatedBefore.Value);
+        }
+        if (input.UpdatedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastModifiedDate > input.UpdatedAfter.Value);
+        }
+        if (input.PublishedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastPublishedDate < input.PublishedBefore.Value);
+        }
+        if (input.PublishedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(a => a.LastPublishedDate > input.PublishedAfter.Value);
+        }
+        if (input.Published.HasValue)
+        {
+            result.Records = result.Records.Where(a => input.Published.Value == a.LastPublishedDate.HasValue);
+        }
+        if (input.Archived.HasValue)
+        {
+            result.Records = result.Records.Where(a => input.Archived.Value == a.ArchivedDate.HasValue);
+        }
+        #endregion
+
+        return result;
     }
 
     [Action("Search all published articles translations", Description = "Search all published articles translations")]
@@ -57,16 +98,27 @@ public class ArticleActions : SalesforceActions
         };
     }
 
-    [Action("Search all published articles", Description = "Search all published articles")]
-    public async Task<ListAllArticlesResponse> ListAllPublishedArticles()
+    [Action("Search published articles", Description = "Search all published articles")]
+    public async Task<ListAllArticlesResponse> ListAllPublishedArticles([ActionParameter]searchFilter input)
     {
         var languageDetails = await GetKnowledgeSettings();
 
-        return await ListPublishedArticlesTranslations(
+        var result = await ListPublishedArticlesTranslations(
             new()
             {
                 Locale = languageDetails.DefaultLanguage
             });
+
+        if (input.PublishedAfter.HasValue)
+        {
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedAfter.Value);
+        }
+        if (input.PublishedBefore.HasValue)
+        {
+            result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedBefore.Value);
+        }
+
+        return result;
     }
 
     [Action("Search knowledge article versions", Description = "Search knowledge article versions")]
@@ -100,7 +152,7 @@ public class ArticleActions : SalesforceActions
         var endpoint = $"services/data/v57.0/support/knowledgeArticles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         request.AddLocaleHeader(input.Locale);
-
+        var response = Client.Execute(request);
         return Client.ExecuteWithErrorHandling<ArticleContentDto>(request)!;
     }
 
@@ -158,6 +210,15 @@ public class ArticleActions : SalesforceActions
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
+        var articleId = string.IsNullOrEmpty(input.ArticleId)
+        ? doc.DocumentNode
+              .SelectSingleNode("//meta[@name='blackbird-article-id']")
+              ?.GetAttributeValue("content", null)
+        : input.ArticleId;
+
+        if (string.IsNullOrEmpty(articleId))
+            throw new PluginMisconfigurationException("Article ID is required, it needs to be present either in the input or HTML file.");
+
         var fieldsToUpdate = new Dictionary<string, string>();
         foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlAgilityPack.HtmlNodeType.Element))
         {
@@ -178,7 +239,7 @@ public class ArticleActions : SalesforceActions
     public async Task<ListAllArticlesResponse> GetArticlesNotTranslated(
         [ActionParameter] ListPublishedTranslationsRequest input)
     {
-        var allArticles = (await ListAllPublishedArticles()).Records;
+        var allArticles = (await ListAllPublishedArticles(new searchFilter())).Records;
         var allTranslations = (await ListPublishedArticlesTranslations(input)).Records;
 
         return new()

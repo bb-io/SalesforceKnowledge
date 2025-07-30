@@ -1,5 +1,6 @@
 ﻿using App.Salesforce.Cms.Actions;
 using App.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Models.Requests;
 using Blackbird.Applications.Sdk.Common.Files;
 using Salesforce.CmsTests.Base;
 using System;
@@ -18,11 +19,11 @@ namespace Tests.Salesforce.Cms
         {
             var action = new ArticleActions(InvocationContext, FileManager);
 
-            var result = await action.ListAllArticles();
+            var result = await action.ListAllArticles(new masterArticleSearchFilters());
 
             foreach (var article in result.Records)
             {
-                Console.WriteLine($"{article.Id} - {article.Title}");
+                Console.WriteLine($"{article.Id}");
                 Assert.IsNotNull(article);
             }
         }
@@ -48,7 +49,7 @@ namespace Tests.Salesforce.Cms
         public async Task SearchAllPublishedArticles_IsSuccess()
         {
             var action = new ArticleActions(InvocationContext, FileManager);
-            var result = await action.ListAllPublishedArticles();
+            var result = await action.ListAllPublishedArticles(new searchFilter());
 
             foreach (var article in result.Records)
             {

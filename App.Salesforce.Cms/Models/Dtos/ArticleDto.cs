@@ -14,6 +14,27 @@ public class ArticleDto
 
     [Display("Total view count")] public int TotalViewCount { get; set; }
 
+    [Display("Down vote count")]
+    public int DownVoteCount { get; set; }
+
+    [Display("Up vote count")]
+    public int UpVoteCount { get; set; }
+
+    [Display("URL")]
+    public string? Url { get; set; }
+
+    [Display("URL name")]
+    public string? UrlName { get; set; }
+
+    [Display("View score")]
+    public double ViewScore { get; set; }
+
+    [Display("Last published date")]
+    public DateTime LastPublishedDate { get; set; }
+
+    [Display("Summary")]
+    public string? Summary { get; set; }
+
     public ArticleDto(PublishedArticleDto article, string masterLanguage)
     {
         Id = article.Id;
@@ -21,6 +42,13 @@ public class ArticleDto
         ArticleNumber = article.ArticleNumber;
         MasterLanguage = masterLanguage;
         TotalViewCount = article.ViewCount;
+        DownVoteCount = article.DownVoteCount;
+        UpVoteCount = article.UpVoteCount;
+        Url = article.Url;
+        UrlName = article.UrlName;
+        ViewScore = article.ViewScore;
+        LastPublishedDate = article.LastPublishedDate;
+        Summary = article.Summary;
     }
 
     public ArticleDto()

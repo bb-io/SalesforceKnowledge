@@ -13,7 +13,7 @@ namespace Apps.Salesforce.Cms.Polling.Models
 
         public string Id { get; set; }
 
-        [Display("Is deleted")]
+        [DefinitionIgnore]
         public bool IsDeleted { get; set; }
 
         [Display("Create date")]

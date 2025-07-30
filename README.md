@@ -22,6 +22,8 @@ To get this, create a connected app on Salesforce - find instructions [here](htt
  
 Once the connected app is created, you can get the Client ID (consumer key) and Client secret (consumer secret). To access the consumer key, from the App Manager, find the connected app, and select `View` from the dropdown. Then click `Manage Consumer Details`. You’re sometimes prompted to verify your identity before you can view the consumer key.
 
+> Make sure to add the "Perform requests at any time (refresh_token, offline_access)" scope to the OAuth Scopes as it is required to keep the app connected.
+
 ## Connecting
 
 1. Navigate to Apps and search for **Salesforce Knowledge**.
@@ -36,9 +38,9 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 
 ### Article
 
-- **Search all master knowledge articles** Search all master knowledge articles
+- **Search master knowledge articles** Search master knowledge articles
 - **Search all published articles' translations** Search all published articles translations
-- **Search all published articles** Search all published articles
+- **Search published articles** Search published articles
 - **Search knowledge article versions** Search knowledge article versions
 - **Get article info** Get article info by id
 - **Get articles not translated in language** Get articles not translated in specific language
