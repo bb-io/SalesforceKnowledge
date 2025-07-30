@@ -32,7 +32,7 @@ public class ArticleActions : SalesforceActions
     #region List actions
 
     [Action("Search master knowledge articles", Description = "Search all master knowledge articles")] 
-    public async Task<ListAllMasterArticlesResponse> ListAllArticles(masterArticleSearchFilters input)
+    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter]masterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
@@ -99,7 +99,7 @@ public class ArticleActions : SalesforceActions
     }
 
     [Action("Search published articles", Description = "Search all published articles")]
-    public async Task<ListAllArticlesResponse> ListAllPublishedArticles(searchFilter input)
+    public async Task<ListAllArticlesResponse> ListAllPublishedArticles([ActionParameter]searchFilter input)
     {
         var languageDetails = await GetKnowledgeSettings();
 
