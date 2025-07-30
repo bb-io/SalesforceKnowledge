@@ -69,11 +69,11 @@ public class ArticleActions : SalesforceActions
         }
         if (input.Published.HasValue)
         {
-            result.Records = result.Records.Where(a => a.LastPublishedDate.HasValue);
+            result.Records = result.Records.Where(a => input.Published.Value == a.LastPublishedDate.HasValue);
         }
         if (input.Archived.HasValue)
         {
-            result.Records = result.Records.Where(a => a.ArchivedDate.HasValue);
+            result.Records = result.Records.Where(a => input.Archived.Value == a.ArchivedDate.HasValue);
         }
         #endregion
 
