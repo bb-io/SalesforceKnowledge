@@ -1,4 +1,5 @@
 ﻿using App.Salesforce.Cms.Constants;
+using App.Salesforce.Cms.Models.Dtos;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
 using Blackbird.Applications.Sdk.Common.Invocation;
@@ -36,7 +37,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
     public async Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values,
         CancellationToken cancellationToken)
     {
-        const string grant_type = "refresh_token";
+        const string grantType = "refresh_token";
         _tokenUrl = $"https://{values[CredNames.Domain]}.my.salesforce.com/services/oauth2/token";
         if (!values.TryGetValue(CredNames.RefreshToken, out var refreshToken))
         {
@@ -45,7 +46,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
 
         var bodyParameters = new Dictionary<string, string>
         {
-            { "grant_type", grant_type },
+            { "grant_type", grantType },
             { "client_id", values[CredNames.ClientId] },
             { "client_secret", values[CredNames.ClientSecret] },
             { "refresh_token", refreshToken },
@@ -65,18 +66,61 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
     private async Task<Dictionary<string, string>> RequestToken(Dictionary<string, string> bodyParameters,
         CancellationToken cancellationToken)
     {
-        using var httpClient = new HttpClient();
-        using var httpContent = new FormUrlEncodedContent(bodyParameters);
-        using var response = await httpClient.PostAsync(_tokenUrl, httpContent, cancellationToken);
+        try
+        {
+            using var httpClient = new HttpClient();
+            using var httpContent = new FormUrlEncodedContent(bodyParameters);
+            using var response = await httpClient.PostAsync(_tokenUrl, httpContent, cancellationToken);
 
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var resultDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent)
-                               ?? throw new InvalidOperationException($"Invalid response content: {responseContent}");
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var bodyParamsLog = string.Join(", ", bodyParameters.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+                var errorMessage = $"[SalesforceKnowledge] Token request failed. Status: {response.StatusCode}";
+                
+                var errorResponse = JsonConvert.DeserializeObject<SalesforceErrorDto>(responseContent);
+                if (errorResponse?.Error != null)
+                {
+                    errorMessage += $", API Error: {errorResponse.Error} - {errorResponse.ErrorDescription}";
+                }
+                else
+                {
+                    errorMessage += $", Response: {responseContent}";
+                }
+                
+                errorMessage += $", Body parameters: {bodyParamsLog}";
+                InvocationContext.Logger?.LogError(errorMessage, []);
+                
+                throw new InvalidOperationException($"Salesforce Token API error: {errorResponse?.Error ?? response.StatusCode.ToString()} - {errorResponse?.ErrorDescription ?? responseContent}");
+            }
 
-        var issuedAt = long.Parse(resultDictionary[CredNames.IssuedAt]);
-        var expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(issuedAt).AddHours(2).DateTime;
-        resultDictionary.Add(CredNames.ExpiresAt, expiresAt.ToString());
+            var resultDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
+            if (resultDictionary == null)
+            {
+                var bodyParamsLog = string.Join(", ", bodyParameters.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+                InvocationContext.Logger?.LogError($"[SalesforceKnowledge] Failed to deserialize response. Response: {responseContent}, Body parameters: {bodyParamsLog}", []);
+                throw new InvalidOperationException($"Invalid response content: {responseContent}");
+            }
 
-        return resultDictionary;
+            if (!resultDictionary.TryGetValue(CredNames.IssuedAt, out var issuedAtValue))
+            {
+                var bodyParamsLog = string.Join(", ", bodyParameters.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+                var responseKeys = string.Join(", ", resultDictionary.Keys);
+                InvocationContext.Logger?.LogError($"[SalesforceKnowledge] Missing 'issued_at' key in response. Response: {responseContent}, Available keys: [{responseKeys}], Body parameters: {bodyParamsLog}", []);
+                throw new InvalidOperationException($"Missing 'issued_at' key in response. Available keys: [{responseKeys}]");
+            }
+
+            var issuedAt = long.Parse(issuedAtValue);
+            var expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(issuedAt).AddHours(2).DateTime;
+            resultDictionary.Add(CredNames.ExpiresAt, expiresAt.ToString());
+            return resultDictionary;
+        }
+        catch (Exception ex) when (!(ex is InvalidOperationException))
+        {
+            var bodyParamsLog = string.Join(", ", bodyParameters.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
+            InvocationContext.Logger?.LogError($"[SalesforceKnowledge] Error during token request: {ex.Message}, Body parameters: {bodyParamsLog}", []);
+            throw new InvalidOperationException($"Failed to request token: {ex.Message}", ex);
+        }
     }
 }
