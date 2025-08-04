@@ -10,6 +10,7 @@ namespace App.Salesforce.Cms.Auth.OAuth2;
 public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvocable(InvocationContext), IOAuth2TokenService
 {
     private static string? _tokenUrl;
+    private const int TokenExpirationHours = 2;
 
     public Task<Dictionary<string, string>> RequestToken(string state, string code, Dictionary<string, string> values,
         CancellationToken cancellationToken)
@@ -115,7 +116,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
             }
 
             var issuedAt = long.Parse(issuedAtValue);
-            var expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(issuedAt).AddHours(2).DateTime;
+            var expiresAt = DateTimeOffset.FromUnixTimeMilliseconds(issuedAt).AddHours(TokenExpirationHours).DateTime;
             resultDictionary.Add(CredNames.ExpiresAt, expiresAt.ToString());
             return resultDictionary;
         }
