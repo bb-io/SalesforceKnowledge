@@ -53,7 +53,10 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
         };
 
         var result = await RequestToken(bodyParameters, cancellationToken);
-        result["refresh_token"] = refreshToken;
+        if (!result.ContainsKey("refresh_token"))
+        {
+            result["refresh_token"] = refreshToken;
+        }
 
         return result;
     }
