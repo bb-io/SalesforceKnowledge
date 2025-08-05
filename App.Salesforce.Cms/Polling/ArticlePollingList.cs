@@ -74,6 +74,6 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
     {
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         var response = await Client.ExecuteWithErrorHandling<ListAllArticlesPollingResponse>(request);
-        return response.Records;
+        return response.Records.Where(x => x.IsDeleted == false).ToArray();
     }
 }
