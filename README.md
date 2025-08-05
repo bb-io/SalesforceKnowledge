@@ -56,8 +56,8 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 
 ### Events
 
-- **On articles creted**
-- **On articles updated**
+- **On articles creted** Polling event, that periodically checks for new articles created in Salesforce.
+- **On articles updated** Polling event, that periodically checks for updated articles in Salesforce.
 
 ## Feedback
 

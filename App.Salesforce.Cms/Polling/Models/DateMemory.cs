@@ -1,7 +1,6 @@
-﻿namespace Apps.Salesforce.Cms.Polling.Models
+﻿namespace Apps.Salesforce.Cms.Polling.Models;
+
+public class DateMemory
 {
-    public class DateMemory
-    {
-        public DateTime LastInteractionDate { get; set; }
-    }
+    public DateTime LastInteractionDate { get; set; }
 }

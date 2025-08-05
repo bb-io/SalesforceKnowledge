@@ -11,8 +11,8 @@ public class SalesforceActions : BaseInvocable
         InvocationContext.AuthenticationCredentialsProviders;
     
     protected SalesforceClient Client { get; }
-    
-    public SalesforceActions(InvocationContext invocationContext) : base(invocationContext)
+
+    protected SalesforceActions(InvocationContext invocationContext) : base(invocationContext)
     {
         Client = new(Creds);
     }
