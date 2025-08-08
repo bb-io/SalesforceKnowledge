@@ -1,4 +1,6 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using App.Salesforce.Cms.Models.Dtos;
+using Blackbird.Applications.Sdk.Common;
+using System.Text.Json.Serialization;
 
 namespace Apps.Salesforce.Cms.Models.Dtos;
 
@@ -46,6 +48,9 @@ public class MasterArticleDto
 
     [Display("Total view count")]
     public int TotalViewCount { get; set; }
+
+    [Display("Category groups")]
+    public IEnumerable<CategoryGroupDto>? CategoryGroups { get; set; }
 
     [DefinitionIgnore]
     public bool IsDeleted { get; set; }

@@ -35,6 +35,9 @@ public class ArticleDto
     [Display("Summary")]
     public string? Summary { get; set; }
 
+    [Display("Category groups")]
+    public IEnumerable<CategoryGroupDto> CategoryGroups { get; set; }
+
     public ArticleDto(PublishedArticleDto article, string masterLanguage)
     {
         Id = article.Id;
@@ -49,9 +52,44 @@ public class ArticleDto
         ViewScore = article.ViewScore;
         LastPublishedDate = article.LastPublishedDate;
         Summary = article.Summary;
+        CategoryGroups = article.CategoryGroups?.Select(cg => new CategoryGroupDto
+        {
+            GroupLabel = cg.GroupLabel,
+            GroupName = cg.GroupName,
+            SelectedCategories = cg.SelectedCategories?.Select(sc => new CategoryDto
+            {
+                CategoryLabel = sc.CategoryLabel,
+                CategoryName = sc.CategoryName,
+                Url = sc.Url
+            }) ?? Enumerable.Empty<CategoryDto>()
+        }) ?? Enumerable.Empty<CategoryGroupDto>();
     }
 
     public ArticleDto()
     {
     }
+}
+
+public class CategoryGroupDto
+{
+    [Display("Group label")]
+    public string GroupLabel { get; set; }
+
+    [Display("Group name")]
+    public string GroupName { get; set; }
+
+    [Display("Selected categories")]
+    public IEnumerable<CategoryDto> SelectedCategories { get; set; }
+}
+
+public class CategoryDto
+{
+    [Display("Category label")]
+    public string CategoryLabel { get; set; }
+
+    [Display("Category name")]
+    public string CategoryName { get; set; }
+
+    [Display("Category URL")]
+    public string Url { get; set; }
 }

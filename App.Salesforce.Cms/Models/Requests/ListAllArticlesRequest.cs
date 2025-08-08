@@ -2,14 +2,8 @@
 
 namespace Apps.Salesforce.Cms.Models.Requests
 {
-    public class searchFilter
+    public class ListAllArticlesRequest
     {
-        [Display("Published after")]
-        public DateTime? PublishedAfter { get; set; }
-
-        [Display("Published before")]
-        public DateTime? PublishedBefore { get; set; }
-
         [Display("Category name")]
         public string? CategoryName { get; set; }
 
