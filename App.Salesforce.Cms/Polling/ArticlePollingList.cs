@@ -1,5 +1,7 @@
 ﻿using App.Salesforce.Cms.Actions.Base;
 using App.Salesforce.Cms.Api;
+using App.Salesforce.Cms.Models.Dtos;
+using App.Salesforce.Cms.Models.Responses;
 using Apps.Salesforce.Cms.Models.Dtos;
 using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Invocation;
@@ -38,6 +40,48 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
                 LastInteractionDate = DateTime.UtcNow
             },
             Result = new ListAllArticlesPollingResponse(articles)
+        };
+    }
+
+    [PollingEvent("On published articles last published", "Polling event, that periodically checks for  published articles in Salesforce.")]
+    public async Task<PollingEventResponse<DateMemory, ListAllArticlesResponse>> OnPublishedArticlesCreated(
+    PollingEventRequest<DateMemory> request)
+    {
+        var langEndpoint = "/services/data/v57.0/knowledgeManagement/settings";
+        var lang = new SalesforceRequest(langEndpoint, Method.Get, Creds);
+
+        var languageDetails =await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(lang)!;
+        var locale = languageDetails.DefaultLanguage;
+
+        if (request.Memory == null)
+        {
+            return new PollingEventResponse<DateMemory, ListAllArticlesResponse>
+            {
+                FlyBird = false,
+                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+                Result = new ListAllArticlesResponse { Records = Array.Empty<ArticleDto>() }
+            };
+        }
+
+        var dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-dd'T'HH:mm:ss.fffZ");
+        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
+        var sfRequest = new SalesforceRequest(endpoint, Method.Get, Creds);
+        sfRequest.AddLocaleHeader(locale);
+
+        var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(sfRequest);
+        var filteredArticles = publishedArticles?.Articles
+        ?.Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate)
+        ?.Select(a => new ArticleDto(a, locale))
+        .ToArray() ?? Array.Empty<ArticleDto>();
+
+        return new PollingEventResponse<DateMemory, ListAllArticlesResponse>
+        {
+            FlyBird = filteredArticles.Length > 0,
+            Memory = new DateMemory
+            {
+                LastInteractionDate = DateTime.UtcNow
+            },
+            Result = new ListAllArticlesResponse { Records = filteredArticles }
         };
     }
 

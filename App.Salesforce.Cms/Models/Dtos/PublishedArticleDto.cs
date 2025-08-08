@@ -36,4 +36,7 @@ public class PublishedArticleDto
 
     [Display("Summary")]
     public string? Summary { get; set; }
+
+    [Display("Category groups")]
+    public IEnumerable<CategoryGroupDto> CategoryGroups { get; set; }
 }

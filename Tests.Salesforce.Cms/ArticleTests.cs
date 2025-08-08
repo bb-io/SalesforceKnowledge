@@ -14,13 +14,20 @@ public class ArticleTests : TestBase
     {
         var action = new ArticleActions(InvocationContext, FileManager);
 
-        var result = await action.ListAllArticles(new masterArticleSearchFilters());
+        var result = await action.ListAllArticles(new masterArticleSearchFilters
+        {
+
+        });
 
         foreach (var article in result.Records)
         {
             Console.WriteLine($"{article.Id}");
             Assert.IsNotNull(article);
         }
+
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
@@ -31,26 +38,34 @@ public class ArticleTests : TestBase
         {
             Locale = "en_US"
         };
-        var result = await action.ListPublishedArticlesTranslations(input);
+        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { GroupName="Blackbird"});
 
         foreach (var article in result.Records)
         {
             Console.WriteLine($"{article.Id} - {article.Title}");
             Assert.IsNotNull(article);
         }
+
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var result = await action.ListAllPublishedArticles(new searchFilter());
+        var result = await action.ListAllPublishedArticles(new searchFilter { GroupName="Blackbird"  });
 
         foreach (var article in result.Records)
         {
             Console.WriteLine($"{article.Id} - {article.Title}");
             Assert.IsNotNull(article);
         }
+
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
@@ -148,7 +163,6 @@ public class ArticleTests : TestBase
             Console.WriteLine($"{article.Title} - {article.Id}");
             Assert.IsNotNull(result);
         }
-
     }
 
     [TestMethod]
