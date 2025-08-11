@@ -3,6 +3,7 @@ using App.Salesforce.Cms.Api;
 using App.Salesforce.Cms.Models.Dtos;
 using App.Salesforce.Cms.Models.Responses;
 using Apps.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Requests;
 using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
@@ -45,7 +46,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
 
     [PollingEvent("On published articles last published", "Polling event, that periodically checks for  published articles in Salesforce.")]
     public async Task<PollingEventResponse<DateMemory, ListAllArticlesResponse>> OnPublishedArticlesCreated(
-    PollingEventRequest<DateMemory> request)
+    PollingEventRequest<DateMemory> request,[PollingEventParameter] CategoryFilterRequest category)
     {
         var langEndpoint = "/services/data/v57.0/knowledgeManagement/settings";
         var lang = new SalesforceRequest(langEndpoint, Method.Get, Creds);
@@ -69,19 +70,34 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         sfRequest.AddLocaleHeader(locale);
 
         var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(sfRequest);
-        var filteredArticles = publishedArticles?.Articles
+        IEnumerable<PublishedArticleDto> filtered = publishedArticles?.Articles
         ?.Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate)
-        ?.Select(a => new ArticleDto(a, locale))
-        .ToArray() ?? Array.Empty<ArticleDto>();
+        ?? Enumerable.Empty<PublishedArticleDto>();
+
+        if (!string.IsNullOrEmpty(category?.CategoryName))
+        {
+            filtered = filtered.Where(a =>
+                a.CategoryGroups != null &&
+                a.CategoryGroups.Any(cg =>
+                    cg.SelectedCategories != null &&
+                    cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName)));
+        }
+        if (!string.IsNullOrEmpty(category?.GroupName))
+        {
+            filtered = filtered.Where(a =>
+                a.CategoryGroups != null &&
+                a.CategoryGroups.Any(cg => cg.GroupName == category.GroupName));
+        }
+
+        var records = filtered
+         .Select(a => new ArticleDto(a, locale))
+         .ToArray();
 
         return new PollingEventResponse<DateMemory, ListAllArticlesResponse>
         {
-            FlyBird = filteredArticles.Length > 0,
-            Memory = new DateMemory
-            {
-                LastInteractionDate = DateTime.UtcNow
-            },
-            Result = new ListAllArticlesResponse { Records = filteredArticles }
+            FlyBird = records.Length > 0,
+            Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+            Result = new ListAllArticlesResponse { Records = records }
         };
     }
 

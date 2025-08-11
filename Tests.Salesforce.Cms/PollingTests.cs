@@ -1,4 +1,5 @@
-﻿using Apps.Salesforce.Cms.Polling;
+﻿using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Polling;
 using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Salesforce.CmsTests.Base;
@@ -43,7 +44,7 @@ public class PollingTests:TestBase
 
         var initialMemory = new DateMemory
         {
-            LastInteractionDate = DateTime.Parse("2025-08-06T15:30:08.0000000Z")
+            LastInteractionDate = DateTime.Parse("2024-08-06T15:30:08.0000000Z")
         };
 
         var request = new PollingEventRequest<DateMemory>
@@ -51,7 +52,7 @@ public class PollingTests:TestBase
             Memory = initialMemory
         };
 
-        var result = await polling.OnPublishedArticlesCreated(request);
+        var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" });
         var articles = result.Result.Records;
 
         foreach (var article in articles)
