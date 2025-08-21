@@ -258,7 +258,7 @@ public class ArticleActions : SalesforceActions
             }
         }
 
-        return UpdateMultipleArticleFields(input.ArticleId, input.Locale, fieldsToUpdate);
+        return UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate);
     }
 
     [Action("Get articles not translated in language",
