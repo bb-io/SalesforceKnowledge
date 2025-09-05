@@ -236,7 +236,8 @@ public class ArticleActions : SalesforceActions
     }
 
     [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
-    public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input)
+    public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
+        [ActionParameter][Display("Publish changes")] bool publish)
     {
         var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
@@ -263,7 +264,7 @@ public class ArticleActions : SalesforceActions
             }
         }
 
-        return UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate);
+        return UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, publish);
     }
 
     [Action("Get articles not translated in language",
@@ -381,7 +382,8 @@ public class ArticleActions : SalesforceActions
     }
 
     [Action("Update knowledge article field", Description = "Update knowledge article field")]
-    public Task UpdateKnowledgeArticleField([ActionParameter] UpdateKnowledgeArticleFieldRequest input)
+    public Task UpdateKnowledgeArticleField([ActionParameter] UpdateKnowledgeArticleFieldRequest input,
+        [ActionParameter][Display("Publish changes")] bool publish)
     {
         return UpdateMultipleArticleFields(
             input.ArticleId,
@@ -389,7 +391,7 @@ public class ArticleActions : SalesforceActions
             new()
             {
                 { input.FieldName, input.FieldValue }
-            });
+            }, publish);
     }
 
 
@@ -410,7 +412,7 @@ public class ArticleActions : SalesforceActions
         return InvocationContext.AuthenticationCredentialsProviders.ToList();
     }
 
-    private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields)
+    private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields, bool publishChanges)
     {
         var draftVersion = await CreatedArticleDraft(new()
         {
@@ -428,11 +430,15 @@ public class ArticleActions : SalesforceActions
         request.AddJsonBody(fields);
 
         await Client.ExecuteWithErrorHandling(request);
-        await PublishKnowledgeTranslation(new()
+        if (publishChanges)
         {
-            ArticleId = articleId,
-            Locale = locale
-        });
+            await PublishKnowledgeTranslation(new()
+            {
+                ArticleId = articleId,
+                Locale = locale
+            });
+        }
+        
     }
     
     private async Task PublishTranslationArticle(string articleId, string locale)

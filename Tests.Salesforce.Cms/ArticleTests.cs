@@ -143,7 +143,7 @@ public class ArticleTests : TestBase
             ArticleId = "kA067000000E03gCAC",
             Locale = "en_US"
         };
-        var result = await action.GetArticleContentAsHtml(input);
+        var result = await action.GetArticleContentAsHtml(input, null);
 
         Assert.IsNotNull(result);
     }
@@ -178,7 +178,7 @@ public class ArticleTests : TestBase
                 Name = "test.html"
             }
         };
-        var result = action.TranslateFromHtml(input);
+        var result = action.TranslateFromHtml(input, true);
 
         Assert.IsNotNull(result);
     }
@@ -254,7 +254,7 @@ public class ArticleTests : TestBase
             FieldValue = "New Title 03/21",
             Locale = "en_US"
         };
-        var result = action.UpdateKnowledgeArticleField(input);
+        var result = action.UpdateKnowledgeArticleField(input,true);
         Assert.IsNotNull(true);
     }
 }
