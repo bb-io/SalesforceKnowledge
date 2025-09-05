@@ -197,12 +197,17 @@ public class ArticleActions : SalesforceActions
 
     [Action("Get article content as HTML file", Description = "Get article content as HTML file by id")]
     public async Task<GetArticleContentAsHtmlResponse> GetArticleContentAsHtml(
-        [ActionParameter] GetArticleContentRequest input)
+        [ActionParameter] GetArticleContentRequest input, [ActionParameter] ExcludeFieldsRequest itemsToExclude)
     {
         var articleObject = await GetArticleContent(input);
 
         var customContent = string.Empty;
-        foreach (var item in articleObject.LayoutItems)
+        var items = articleObject.LayoutItems.ToList();
+        if (itemsToExclude != null && itemsToExclude.Fields != null)
+        {
+            items.RemoveAll(i => itemsToExclude.Fields.Contains(i.Name));
+        }
+        foreach (var item in items)
         {
             if (item.Name.EndsWith("__c")) // custom field with content
             {
