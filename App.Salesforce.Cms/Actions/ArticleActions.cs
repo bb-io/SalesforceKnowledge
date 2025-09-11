@@ -346,6 +346,14 @@ public class ArticleActions : SalesforceActions
             ArticleId = input.ArticleId
         });
 
+        if (versions != null && versions.Records.Any(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft"))
+        {
+            return new()
+            {
+                DraftVersionId = versions.Records.First(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft").Id
+            };
+        }
+
         var articlePublished = versions.Records
             .First(r => r.PublishStatus == "Online" && r.Language == input.Locale);
 
@@ -414,6 +422,7 @@ public class ArticleActions : SalesforceActions
 
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields, bool publishChanges)
     {
+       
         var draftVersion = await CreatedArticleDraft(new()
         {
             ArticleId = articleId,
