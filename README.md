@@ -34,7 +34,7 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 
 ## Actions
 
-### Article
+### Articles
 
 - **Search master knowledge articles** Search master knowledge articles
 - **Search all published articles' translations** Search all published articles translations
@@ -51,6 +51,7 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 - **Create draft for knowledge article** Create draft for knowledge article
 - **Update knowledge article field** Update knowledge article field
 - **Get knowledge language settings** Get knowledge language settings
+- **Get article ID from HTML file** Get article ID from the HTML file metadata
 
 ### Events
 
