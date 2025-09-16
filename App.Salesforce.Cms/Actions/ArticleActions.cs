@@ -240,9 +240,9 @@ public class ArticleActions : SalesforceActions
 
 
     [Action("Get article ID from HTML file", Description = "Get article ID from the HTML file metadata")]
-    public async Task<string> GetArticleIdFromHtmlFile([ActionParameter] FileReference File)
+    public async Task<string> GetArticleIdFromHtmlFile([ActionParameter] GetIDFromHTMLRequest input)
 {
-    var file = await _fileManagementClient.DownloadAsync(File);
+    var file = await _fileManagementClient.DownloadAsync(input.File);
     var html = Encoding.UTF8.GetString(await file.GetByteData());
 
     var articleId = ExtractArticleIdFromHtml(html);
