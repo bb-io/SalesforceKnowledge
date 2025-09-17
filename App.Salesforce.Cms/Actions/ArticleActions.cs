@@ -21,6 +21,7 @@ using System.Net;
 using System.Net.Mime;
 using System.Text;
 using HtmlAgilityPack;
+using Apps.Salesforce.Cms.Utils;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -257,7 +258,7 @@ public class ArticleActions : SalesforceActions
 }
 
 [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
-    public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
+    public async Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
         [ActionParameter][Display("Publish changes")] bool publish)
     {
         var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
@@ -285,7 +286,7 @@ public class ArticleActions : SalesforceActions
             }
         }
 
-        return UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, publish);
+        await ErrorHandler.ExecuteWithErrorHandling(() =>UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, publish));
     }
 
     [Action("Get articles not translated in language",
