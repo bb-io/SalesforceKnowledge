@@ -38,6 +38,12 @@ public class ArticleDto
     [Display("Category groups")]
     public IEnumerable<CategoryGroupDto> CategoryGroups { get; set; }
 
+    [Display("Visible in public knowledge base")]
+    public bool? IsVisibleInPkb { get; set; }
+
+    [Display("Visible to customer")]
+    public bool? IsVisibleInCsp { get; set; }
+
     public ArticleDto(PublishedArticleDto article, string masterLanguage)
     {
         Id = article.Id;
@@ -63,6 +69,9 @@ public class ArticleDto
                 Url = sc.Url
             }) ?? Enumerable.Empty<CategoryDto>()
         }) ?? Enumerable.Empty<CategoryGroupDto>();
+
+        IsVisibleInPkb = article.IsVisibleInPkb;
+        IsVisibleInCsp = article.IsVisibleInCsp;
     }
 
     public ArticleDto()
