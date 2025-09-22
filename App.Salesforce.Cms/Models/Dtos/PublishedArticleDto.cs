@@ -39,4 +39,10 @@ public class PublishedArticleDto
 
     [Display("Category groups")]
     public IEnumerable<CategoryGroupDto> CategoryGroups { get; set; }
+
+    [Display("Visible in public knowledge base")]
+    public bool? IsVisibleInPkb { get; set; }
+
+    [Display("Visible to customer")]
+    public bool? IsVisibleInCsp { get; set; }
 }

@@ -52,7 +52,8 @@ public class PollingTests:TestBase
             Memory = initialMemory
         };
 
-        var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" });
+        var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" },
+            new VisibilityFilterRequest { IsVisibleInCsp=false});
         var articles = result.Result.Records;
 
         foreach (var article in articles)
