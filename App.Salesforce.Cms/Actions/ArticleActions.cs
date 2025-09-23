@@ -199,7 +199,6 @@ public class ArticleActions : SalesforceActions
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        var res = Client.Execute(request);
         return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
