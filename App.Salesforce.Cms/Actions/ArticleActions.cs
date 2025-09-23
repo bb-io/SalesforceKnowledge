@@ -101,6 +101,20 @@ public class ArticleActions : SalesforceActions
             result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
         }
 
+        if (category.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
+
+            result.Articles = result.Articles
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
+
         return new ListAllArticlesResponse
         {
             Records = result!.Articles
@@ -139,7 +153,19 @@ public class ArticleActions : SalesforceActions
         {
             result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == input.GroupName));
         }
+        if (input.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(input.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
+            result.Records = result.Records
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
         return result;
     }
 
@@ -173,7 +199,6 @@ public class ArticleActions : SalesforceActions
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-
         return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
