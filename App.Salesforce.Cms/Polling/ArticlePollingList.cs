@@ -110,6 +110,18 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
                 a.CategoryGroups.Any(cg => cg.GroupName == category.GroupName));
         }
 
+        if (category?.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
+
+            filtered = filtered.Where(a =>
+                a.CategoryGroups == null || !a.CategoryGroups.Any(cg =>
+                    cg.SelectedCategories != null &&
+                    cg.SelectedCategories.Any(sc =>
+                        !string.IsNullOrEmpty(sc.CategoryName) &&
+                        excludedSet.Contains(sc.CategoryName))));
+        }
+
         var records = filtered
          .Select(a => new ArticleDto(a, locale))
          .ToArray();
