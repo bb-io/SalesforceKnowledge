@@ -153,7 +153,19 @@ public class ArticleActions : SalesforceActions
         {
             result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == input.GroupName));
         }
+        if (input.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(input.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
+            result.Records = result.Records
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
         return result;
     }
 
