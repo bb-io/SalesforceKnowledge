@@ -122,6 +122,17 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
                         excludedSet.Contains(sc.CategoryName))));
         }
 
+        if (category?.ExcludedGroupNames?.Any() == true)
+        {
+            var excludedGroups = new HashSet<string>(category.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
+
+            filtered = filtered.Where(a =>
+                a.CategoryGroups == null ||
+                !a.CategoryGroups.Any(cg =>
+                    !string.IsNullOrEmpty(cg.GroupName) &&
+                    excludedGroups.Contains(cg.GroupName)));
+        }
+
         var records = filtered
          .Select(a => new ArticleDto(a, locale))
          .ToArray();

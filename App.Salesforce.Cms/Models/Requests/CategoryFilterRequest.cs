@@ -12,5 +12,8 @@ namespace Apps.Salesforce.Cms.Models.Requests
 
         [Display("Excluded data categories")]
         public IEnumerable<string>? ExcludedDataCategories { get; set; }
+
+        [Display("Excluded category group names")]
+        public IEnumerable<string>? ExcludedGroupNames { get; set; }
     }
 }
