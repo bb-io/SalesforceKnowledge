@@ -166,6 +166,16 @@ public class ArticleActions : SalesforceActions
                             excludedSet.Contains(sc.CategoryName))))
                 .ToList();
         }
+        if (input?.ExcludedGroupNames?.Any() == true)
+        {
+            var excludedGroups = new HashSet<string>(input.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
+
+            result.Records = result.Records.Where(a =>
+                a.CategoryGroups == null ||
+                !a.CategoryGroups.Any(cg =>
+                    !string.IsNullOrEmpty(cg.GroupName) &&
+                    excludedGroups.Contains(cg.GroupName)));
+        }
         return result;
     }
 
