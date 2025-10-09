@@ -20,15 +20,10 @@ using Blackbird.Applications.Sdk.Common.Exceptions;
 
 namespace App.Salesforce.Cms.Actions;
 
-[ActionList]
-public class ArticleActions : SalesforceActions
+[ActionList("Articles")]
+public class ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient)
+    : SalesforceActions(invocationContext)
 {
-    private readonly IFileManagementClient _fileManagementClient;
-    public ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient) : base(invocationContext)
-    {
-        _fileManagementClient = fileManagementClient;
-    }
-
     #region List actions
 
     [Action("Search master knowledge articles", Description = "Search all master knowledge articles")] 
@@ -199,14 +194,14 @@ public class ArticleActions : SalesforceActions
 </html>";
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(htmlFile));
-        var file = await _fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
+        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
         return new() { File = file };
     }
 
     [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
     public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input)
     {
-        var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
+        var fileBytes = fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
