@@ -1,22 +1,27 @@
-﻿using System.Net.Mime;
-using App.Salesforce.Cms.Models.Requests;
-using App.Salesforce.Cms.Models.Responses;
-using Blackbird.Applications.Sdk.Common;
-using Blackbird.Applications.Sdk.Common.Actions;
-using System.Text;
-using App.Salesforce.Cms.Actions.Base;
+﻿using App.Salesforce.Cms.Actions.Base;
 using App.Salesforce.Cms.Api;
 using App.Salesforce.Cms.Models.Dtos;
+using App.Salesforce.Cms.Models.Requests;
+using App.Salesforce.Cms.Models.Responses;
+using Apps.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Requests;
+using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common.Actions;
+using Blackbird.Applications.Sdk.Common.Authentication;
+using Blackbird.Applications.Sdk.Common.Exceptions;
+using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Invocation;
+using Blackbird.Applications.Sdk.Utils.Extensions.Files;
 using Blackbird.Applications.Sdk.Utils.Html.Extensions;
+using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
-using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
-using Blackbird.Applications.Sdk.Utils.Extensions.Files;
-using Blackbird.Applications.Sdk.Common.Authentication;
 using System.Net;
-using Apps.Salesforce.Cms.Models.Requests;
-using Blackbird.Applications.Sdk.Common.Exceptions;
+using System.Net.Mime;
+using System.Text;
+using HtmlAgilityPack;
+using Apps.Salesforce.Cms.Utils;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -26,15 +31,15 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 {
     #region List actions
 
-    [Action("Search master knowledge articles", Description = "Search all master knowledge articles")] 
-    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter]masterArticleSearchFilters input)
+    [Action("Search master knowledge articles", Description = "Search all master knowledge articles")]
+    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter] masterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        var result =  await Client.ExecuteWithErrorHandling<ListAllMasterArticlesResponse>(request)!;
+        var result = await Client.ExecuteWithErrorHandling<ListAllMasterArticlesResponse>(request)!;
         result.Records = result.Records.Where(a => a.IsDeleted != true);
 
         #region filters
@@ -77,19 +82,39 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
     [Action("Search all published articles translations", Description = "Search all published articles translations")]
     public async Task<ListAllArticlesResponse> ListPublishedArticlesTranslations(
-        [ActionParameter] ListPublishedTranslationsRequest input)
+        [ActionParameter] ListPublishedTranslationsRequest input, [ActionParameter] CategoryFilterRequest category)
     {
         var languageDetails = await GetKnowledgeSettings();
+        var result = await FetchPublishedArticles(input.Locale);
 
-        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
-        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        request.AddLocaleHeader(input.Locale);
-
-        var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
-        return new()
+        if (!string.IsNullOrEmpty(category.CategoryName))
         {
-            Records = publishedArticles!.Articles
+            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName))).ToList();
+        }
+        if (!string.IsNullOrEmpty(category.GroupName))
+        {
+            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
+        }
+
+        if (category.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
+
+            result.Articles = result.Articles
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
+
+        return new ListAllArticlesResponse
+        {
+            Records = result!.Articles
                 .Select(a => new ArticleDto(a, languageDetails.DefaultLanguage))
+                .ToList()
         };
     }
 
@@ -98,11 +123,14 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     {
         var languageDetails = await GetKnowledgeSettings();
 
-        var result = await ListPublishedArticlesTranslations(
-            new()
-            {
-                Locale = languageDetails.DefaultLanguage
-            });
+        var publishedArticles = await FetchPublishedArticles(languageDetails.DefaultLanguage);
+
+        var result = new ListAllArticlesResponse
+        {
+            Records = publishedArticles!.Articles
+                .Select(a => new ArticleDto(a, languageDetails.DefaultLanguage))
+                .ToList()
+        };
 
         if (input.PublishedAfter.HasValue)
         {
@@ -112,9 +140,48 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         {
             result.Records = result.Records.Where(x => x.LastPublishedDate > input.PublishedBefore.Value);
         }
+        if (!string.IsNullOrEmpty(input.CategoryName))
+        {
+            result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == input.CategoryName)));
+        }
+        if (!string.IsNullOrEmpty(input.GroupName))
+        {
+            result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == input.GroupName));
+        }
+        if (input.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(input.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
+            result.Records = result.Records
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
+        if (input?.ExcludedGroupNames?.Any() == true)
+        {
+            var excludedGroups = new HashSet<string>(input.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
+
+            result.Records = result.Records.Where(a =>
+                a.CategoryGroups == null ||
+                !a.CategoryGroups.Any(cg =>
+                    !string.IsNullOrEmpty(cg.GroupName) &&
+                    excludedGroups.Contains(cg.GroupName)));
+        }
         return result;
     }
+
+    private async Task<PublishedArticlesResponse> FetchPublishedArticles(string locale)
+    {
+        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
+        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+        request.AddLocaleHeader(locale);
+        return await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+    }
+
 
     [Action("Search knowledge article versions", Description = "Search knowledge article versions")]
     public async Task<ListAllArticlesVersionsResponse?> ListAllArticlesVersions(
@@ -137,7 +204,6 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-
         return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
@@ -165,12 +231,17 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
     [Action("Get article content as HTML file", Description = "Get article content as HTML file by id")]
     public async Task<GetArticleContentAsHtmlResponse> GetArticleContentAsHtml(
-        [ActionParameter] GetArticleContentRequest input)
+        [ActionParameter] GetArticleContentRequest input, [ActionParameter] ExcludeFieldsRequest itemsToExclude)
     {
         var articleObject = await GetArticleContent(input);
 
         var customContent = string.Empty;
-        foreach (var item in articleObject.LayoutItems)
+        var items = articleObject.LayoutItems.ToList();
+        if (itemsToExclude != null && itemsToExclude.Fields != null)
+        {
+            items.RemoveAll(i => itemsToExclude.Fields.Contains(i.Name));
+        }
+        foreach (var item in items)
         {
             if (item.Name.EndsWith("__c")) // custom field with content
             {
@@ -198,8 +269,27 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return new() { File = file };
     }
 
-    [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
-    public Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input)
+
+    [Action("Get article ID from HTML file", Description = "Get article ID from the HTML file metadata")]
+    public async Task<string> GetArticleIdFromHtmlFile([ActionParameter] GetIDFromHTMLRequest input)
+{
+    var file = await fileManagementClient.DownloadAsync(input.File);
+    var html = Encoding.UTF8.GetString(await file.GetByteData());
+
+    var articleId = ExtractArticleIdFromHtml(html);
+
+    if (string.IsNullOrEmpty(articleId))
+    {
+        throw new PluginApplicationException("Couldn't find the 'blackbird-article-id' in the HTML file. " +
+                                             "Ensure the file was generated by the article export action.");
+    }
+
+    return articleId;
+}
+
+[Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
+    public async Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
+        [ActionParameter][Display("Publish changes")] bool publish)
     {
         var fileBytes = fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
@@ -226,7 +316,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             }
         }
 
-        return UpdateMultipleArticleFields(input.ArticleId, input.Locale, fieldsToUpdate);
+        await ErrorHandler.ExecuteWithErrorHandling(() =>UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, publish));
     }
 
     [Action("Get articles not translated in language",
@@ -235,7 +325,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         [ActionParameter] ListPublishedTranslationsRequest input)
     {
         var allArticles = (await ListAllPublishedArticles(new searchFilter())).Records;
-        var allTranslations = (await ListPublishedArticlesTranslations(input)).Records;
+        var allTranslations = (await ListPublishedArticlesTranslations(input, new())).Records;
 
         return new()
         {
@@ -308,6 +398,14 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             ArticleId = input.ArticleId
         });
 
+        if (versions != null && versions.Records.Any(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft"))
+        {
+            return new()
+            {
+                DraftVersionId = versions.Records.First(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft").Id
+            };
+        }
+
         var articlePublished = versions.Records
             .First(r => r.PublishStatus == "Online" && r.Language == input.Locale);
 
@@ -344,7 +442,8 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     }
 
     [Action("Update knowledge article field", Description = "Update knowledge article field")]
-    public Task UpdateKnowledgeArticleField([ActionParameter] UpdateKnowledgeArticleFieldRequest input)
+    public Task UpdateKnowledgeArticleField([ActionParameter] UpdateKnowledgeArticleFieldRequest input,
+        [ActionParameter][Display("Publish changes")] bool publish)
     {
         return UpdateMultipleArticleFields(
             input.ArticleId,
@@ -352,7 +451,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             new()
             {
                 { input.FieldName, input.FieldValue }
-            });
+            }, publish);
     }
 
 
@@ -373,8 +472,9 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return InvocationContext.AuthenticationCredentialsProviders.ToList();
     }
 
-    private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields)
+    private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields, bool publishChanges)
     {
+       
         var draftVersion = await CreatedArticleDraft(new()
         {
             ArticleId = articleId,
@@ -391,13 +491,26 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         request.AddJsonBody(fields);
 
         await Client.ExecuteWithErrorHandling(request);
-        await PublishKnowledgeTranslation(new()
+        if (publishChanges)
         {
-            ArticleId = articleId,
-            Locale = locale
-        });
+            await PublishKnowledgeTranslation(new()
+            {
+                ArticleId = articleId,
+                Locale = locale
+            });
+        }
+        
     }
-    
+    private string? ExtractArticleIdFromHtml(string html)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        var metaTag = doc.DocumentNode
+                         .SelectSingleNode("//meta[@name='blackbird-article-id']");
+
+        return metaTag?.GetAttributeValue("content", null);
+    }
     private async Task PublishTranslationArticle(string articleId, string locale)
     {
         await SubmitToTranslation(new()

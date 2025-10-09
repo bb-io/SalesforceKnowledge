@@ -1,4 +1,5 @@
-﻿using Apps.Salesforce.Cms.Polling;
+﻿using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Polling;
 using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Salesforce.CmsTests.Base;
@@ -15,7 +16,7 @@ public class PollingTests:TestBase
 
         var initialMemory = new DateMemory
         {
-            LastInteractionDate = DateTime.Parse("2025-08-04T15:30:08.0000000Z")
+            LastInteractionDate = DateTime.Parse("2024-08-04T15:30:08.0000000Z")
         };
 
         var request = new PollingEventRequest<DateMemory>
@@ -30,6 +31,37 @@ public class PollingTests:TestBase
         {
             Console.WriteLine($"ID: {article.Id}, CreatedDate: {article.CreatedDate}");
         }
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
+
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public async Task OnPublishedArticleCreated_IsSuccessful()
+    {
+        var polling = new ArticlePollingList(InvocationContext);
+
+        var initialMemory = new DateMemory
+        {
+            LastInteractionDate = DateTime.Parse("2024-08-06T15:30:08.0000000Z")
+        };
+
+        var request = new PollingEventRequest<DateMemory>
+        {
+            Memory = initialMemory
+        };
+
+        var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" },
+            new VisibilityFilterRequest { IsVisibleInCsp=false});
+        var articles = result.Result.Records;
+
+        foreach (var article in articles)
+        {
+            Console.WriteLine($"ID: {article.Id}, LastPublishedDate: {article.LastPublishedDate}");
+        }
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
 
         Assert.IsNotNull(result);
     }

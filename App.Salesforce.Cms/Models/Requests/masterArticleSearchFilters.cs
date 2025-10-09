@@ -23,6 +23,5 @@ namespace Apps.Salesforce.Cms.Models.Requests
         public DateTime? PublishedBefore { get; set; }
         public bool? Published { get; set; }
         public bool? Archived { get; set; }
-
     }
 }
