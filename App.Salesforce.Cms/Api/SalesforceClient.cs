@@ -63,7 +63,6 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
             return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
         }
 
-        var errorMessage = string.Join(", ", errorDto.ConvertAll(e => $"{e.Message} (Code: {e.ErrorCode})"));
-        return new PluginApplicationException($"Status code: {response.StatusCode}, {errorMessage}");
+        return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
     }
 }

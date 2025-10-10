@@ -38,7 +38,7 @@ public class ArticleTests : TestBase
         {
             Locale = "en_US"
         };
-        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { GroupName="Blackbird"});
+        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { });
 
         foreach (var article in result.Records)
         {
@@ -91,11 +91,12 @@ public class ArticleTests : TestBase
         var action = new ArticleActions(InvocationContext, FileManager);
         var input = new ArticleRequest
         {
-            ArticleId = "kA24W0000005HO6SAM"
+            ArticleId = "kA067000000E03gCAC"   
         };
         var result = await action.GetArticleInfo(input);
 
-        Console.WriteLine($"{result.ArticleId} - {result.MasterLanguage}");
+        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
+        Console.WriteLine(json);
         Assert.IsNotNull(result);
     }
 
@@ -172,15 +173,16 @@ public class ArticleTests : TestBase
         var input = new TranslateFromHtmlRequest
         {
             ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US",
+            //ArticleId = "kA0J5000000g3RqKAI",
+            Locale = "nl_NL",
             File = new FileReference
             {
                 Name = "test.html"
             }
         };
-        var result = action.TranslateFromHtml(input, true);
+        await action.TranslateFromHtml(input, true);
 
-        Assert.IsNotNull(result);
+        Assert.IsTrue(true);
     }
 
 

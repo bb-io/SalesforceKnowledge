@@ -204,6 +204,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+
         return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
@@ -287,7 +288,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     return articleId;
 }
 
-[Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
+    [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
     public async Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
         [ActionParameter][Display("Publish changes")] bool publish)
     {
@@ -305,6 +306,11 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             throw new PluginMisconfigurationException("Article ID is required, it needs to be present either in the input or HTML file.");
 
         var fieldsToUpdate = new Dictionary<string, string>();
+
+        var titleText = doc.DocumentNode.SelectSingleNode("/html/head/title")?.InnerText?.Trim();
+        if (!string.IsNullOrWhiteSpace(titleText))
+            fieldsToUpdate["Title"] = System.Net.WebUtility.HtmlDecode(titleText);
+
         foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlAgilityPack.HtmlNodeType.Element))
         {
             var fileName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
@@ -391,54 +397,84 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     public async Task<CreateArticleDraftResponse> CreatedArticleDraft(
         [ActionParameter] CreateArticleDraftRequest input)
     {
-        await PublishTranslationArticle(input.ArticleId, input.Locale);
+        var versions = await ListAllArticlesVersions(new() { ArticleId = input.ArticleId })
+        ?? throw new PluginApplicationException("No versions returned for the article.");
 
-        var versions = await ListAllArticlesVersions(new()
-        {
-            ArticleId = input.ArticleId
-        });
-
-        if (versions != null && versions.Records.Any(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft"))
-        {
-            return new()
-            {
-                DraftVersionId = versions.Records.First(x => x.Language == input.Locale && x.PublishStatus.ToLower() == "draft").Id
-            };
-        }
-
-        var articlePublished = versions.Records
-            .First(r => r.PublishStatus == "Online" && r.Language == input.Locale);
+        var existingDraft = versions.Records
+            .FirstOrDefault(x => x.Language == input.Locale &&
+                                 x.PublishStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase));
+        if (existingDraft != null)
+            return new() { DraftVersionId = existingDraft.Id };
 
         var isTranslation = (await GetKnowledgeSettings()).DefaultLanguage != input.Locale;
 
+        var onlineSameLocale = versions.Records
+            .FirstOrDefault(x => x.Language == input.Locale &&
+                                 x.PublishStatus.Equals("Online", StringComparison.OrdinalIgnoreCase));
+
         var endpoint = "services/data/v57.0/actions/standard/createDraftFromOnlineKnowledgeArticle";
         var request = new SalesforceRequest(endpoint, Method.Post, Creds);
-        request.AddJsonBody(new
+
+        if (onlineSameLocale != null)
         {
-            inputs = new[]
+            request.AddJsonBody(new
             {
+                inputs = new[]
+                {
                 new
                 {
                     action = isTranslation ? "EDIT_AS_DRAFT_TRANSLATION" : "EDIT_AS_DRAFT_ARTICLE",
                     unpublish = input.Unpublish ?? false,
-                    articleVersionId = articlePublished.Id
+                    articleVersionId = onlineSameLocale.Id
                 }
             }
-        });
-
-        var response = await Client.ExecuteWithErrorHandling(request);
-
-        var draftData = JsonConvert.DeserializeObject<DraftResponseDto[]>(response.Content);
-        if (draftData?.FirstOrDefault()?.OutputValues.DraftId is null)
+            });
+        }
+        else
         {
-            var error = JsonConvert.DeserializeObject<DraftErrorDto[]>(response.Content);
-            throw new(error.First().OutputValues.First().Value);
+            var masterLang = (await GetKnowledgeSettings()).DefaultLanguage;
+            var masterOnline = versions.Records
+                .FirstOrDefault(x => x.Language == masterLang &&
+                                     x.PublishStatus.Equals("Online", StringComparison.OrdinalIgnoreCase))
+                ?? throw new PluginApplicationException(
+                    $"No Online version found in master language '{masterLang}' to create translation draft from.");
+
+            request.AddJsonBody(new
+            {
+                inputs = new[]
+                {
+                new
+                {
+                    action = "CREATE_TRANSLATION_DRAFT",
+                    language = input.Locale,
+                    articleVersionId = masterOnline.Id,
+                    unpublish = false
+                }
+            }
+            });
         }
 
-        return new()
+        var response = await Client.ExecuteWithErrorHandling(request);
+        var draftData = JsonConvert.DeserializeObject<DraftResponseDto[]>(response.Content);
+        var draftId = draftData?.FirstOrDefault()?.OutputValues?.DraftId;
+
+        if (string.IsNullOrWhiteSpace(draftId))
         {
-            DraftVersionId = draftData.First().OutputValues.DraftId
-        };
+            var error = JsonConvert.DeserializeObject<DraftErrorDto[]>(response.Content);
+
+            string? extractedMsg = null;
+            var firstErr = error?.FirstOrDefault();
+            if (firstErr?.OutputValues != null && firstErr.OutputValues.Any())
+            {
+                var kv = firstErr.OutputValues.First();
+                extractedMsg = kv.Value;
+            }
+
+            var msg = extractedMsg ?? $"Draft creation failed. Raw: {response.Content}";
+            throw new PluginApplicationException(msg);
+        }
+
+        return new() { DraftVersionId = draftId };
     }
 
     [Action("Update knowledge article field", Description = "Update knowledge article field")]
