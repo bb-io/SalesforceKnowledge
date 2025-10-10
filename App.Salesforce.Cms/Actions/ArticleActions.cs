@@ -25,7 +25,7 @@ using Apps.Salesforce.Cms.Utils;
 
 namespace App.Salesforce.Cms.Actions;
 
-[ActionList]
+[ActionList("Articles")]
 public class ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient)
     : SalesforceActions(invocationContext)
 {
@@ -96,6 +96,20 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
         }
 
+        if (category.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
+
+            result.Articles = result.Articles
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
+
         return new ListAllArticlesResponse
         {
             Records = result!.Articles
@@ -134,7 +148,29 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         {
             result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == input.GroupName));
         }
+        if (input.ExcludedDataCategories?.Any() == true)
+        {
+            var excludedSet = new HashSet<string>(input.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
+            result.Records = result.Records
+                .Where(x =>
+                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
+                        cg.SelectedCategories != null &&
+                        cg.SelectedCategories.Any(sc =>
+                            !string.IsNullOrEmpty(sc.CategoryName) &&
+                            excludedSet.Contains(sc.CategoryName))))
+                .ToList();
+        }
+        if (input?.ExcludedGroupNames?.Any() == true)
+        {
+            var excludedGroups = new HashSet<string>(input.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
+
+            result.Records = result.Records.Where(a =>
+                a.CategoryGroups == null ||
+                !a.CategoryGroups.Any(cg =>
+                    !string.IsNullOrEmpty(cg.GroupName) &&
+                    excludedGroups.Contains(cg.GroupName)));
+        }
         return result;
     }
 
