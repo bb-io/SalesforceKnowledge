@@ -38,7 +38,7 @@ public class ArticleTests : TestBase
         {
             Locale = "en_US"
         };
-        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { GroupName="Blackbird"});
+        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { });
 
         foreach (var article in result.Records)
         {
@@ -173,6 +173,7 @@ public class ArticleTests : TestBase
         var input = new TranslateFromHtmlRequest
         {
             ArticleId = "kA067000000E03gCAC",
+            //ArticleId = "kA0J5000000g3RqKAI",
             Locale = "nl_NL",
             File = new FileReference
             {
