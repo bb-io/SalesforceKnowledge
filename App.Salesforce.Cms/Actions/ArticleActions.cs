@@ -25,10 +25,15 @@ using Apps.Salesforce.Cms.Utils;
 
 namespace App.Salesforce.Cms.Actions;
 
-[ActionList("Articles")]
-public class ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient)
-    : SalesforceActions(invocationContext)
+[ActionList]
+public class ArticleActions : SalesforceActions
 {
+    private readonly IFileManagementClient _fileManagementClient;
+    public ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient) : base(invocationContext)
+    {
+        _fileManagementClient = fileManagementClient;
+    }
+
     #region List actions
 
     [Action("Search master knowledge articles", Description = "Search all master knowledge articles")]
@@ -96,20 +101,6 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
         }
 
-        if (category.ExcludedDataCategories?.Any() == true)
-        {
-            var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
-
-            result.Articles = result.Articles
-                .Where(x =>
-                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
-                        cg.SelectedCategories != null &&
-                        cg.SelectedCategories.Any(sc =>
-                            !string.IsNullOrEmpty(sc.CategoryName) &&
-                            excludedSet.Contains(sc.CategoryName))))
-                .ToList();
-        }
-
         return new ListAllArticlesResponse
         {
             Records = result!.Articles
@@ -148,29 +139,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         {
             result.Records = result.Records.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == input.GroupName));
         }
-        if (input.ExcludedDataCategories?.Any() == true)
-        {
-            var excludedSet = new HashSet<string>(input.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
-            result.Records = result.Records
-                .Where(x =>
-                    x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
-                        cg.SelectedCategories != null &&
-                        cg.SelectedCategories.Any(sc =>
-                            !string.IsNullOrEmpty(sc.CategoryName) &&
-                            excludedSet.Contains(sc.CategoryName))))
-                .ToList();
-        }
-        if (input?.ExcludedGroupNames?.Any() == true)
-        {
-            var excludedGroups = new HashSet<string>(input.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
-
-            result.Records = result.Records.Where(a =>
-                a.CategoryGroups == null ||
-                !a.CategoryGroups.Any(cg =>
-                    !string.IsNullOrEmpty(cg.GroupName) &&
-                    excludedGroups.Contains(cg.GroupName)));
-        }
         return result;
     }
 
@@ -204,6 +173,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+
         return Client.ExecuteWithErrorHandling<ArticleInfoDto>(request)!;
     }
 
@@ -265,7 +235,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 </html>";
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(htmlFile));
-        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
+        var file = await _fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{articleObject.Title}.html");
         return new() { File = file };
     }
 
@@ -273,7 +243,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     [Action("Get article ID from HTML file", Description = "Get article ID from the HTML file metadata")]
     public async Task<string> GetArticleIdFromHtmlFile([ActionParameter] GetIDFromHTMLRequest input)
 {
-    var file = await fileManagementClient.DownloadAsync(input.File);
+    var file = await _fileManagementClient.DownloadAsync(input.File);
     var html = Encoding.UTF8.GetString(await file.GetByteData());
 
     var articleId = ExtractArticleIdFromHtml(html);
@@ -287,11 +257,11 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     return articleId;
 }
 
-[Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
+    [Action("Translate knowledge article from HTML file", Description = "Translate knowledge article from HTML file")]
     public async Task TranslateFromHtml([ActionParameter] TranslateFromHtmlRequest input,
         [ActionParameter][Display("Publish changes")] bool publish)
     {
-        var fileBytes = fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
+        var fileBytes = _fileManagementClient.DownloadAsync(input.File).Result.GetByteData().Result;
         var doc = Encoding.UTF8.GetString(fileBytes).AsHtmlDocument();
         var body = doc.DocumentNode.SelectSingleNode("/html/body");
 
@@ -305,6 +275,11 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             throw new PluginMisconfigurationException("Article ID is required, it needs to be present either in the input or HTML file.");
 
         var fieldsToUpdate = new Dictionary<string, string>();
+
+        var titleText = doc.DocumentNode.SelectSingleNode("/html/head/title")?.InnerText?.Trim();
+        if (!string.IsNullOrWhiteSpace(titleText))
+            fieldsToUpdate["Title"] = System.Net.WebUtility.HtmlDecode(titleText);
+
         foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlAgilityPack.HtmlNodeType.Element))
         {
             var fileName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
