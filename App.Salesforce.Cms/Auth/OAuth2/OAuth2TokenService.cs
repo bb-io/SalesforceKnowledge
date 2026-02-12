@@ -1,13 +1,14 @@
 ﻿using App.Salesforce.Cms.Constants;
 using App.Salesforce.Cms.Models.Dtos;
 using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Newtonsoft.Json;
 
 namespace App.Salesforce.Cms.Auth.OAuth2;
 
-public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvocable(InvocationContext), IOAuth2TokenService
+public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvocable(InvocationContext), IOAuth2TokenService, ITokenRefreshable
 {
     private static string? _tokenUrl;
     private const int TokenExpirationHours = 2;
@@ -34,6 +35,19 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
     public bool IsRefreshToken(Dictionary<string, string> values)
         => values.TryGetValue(CredNames.ExpiresAt, out var expireValue) &&
            DateTime.UtcNow > DateTime.Parse(expireValue);
+
+    public int? GetRefreshTokenExprireInMinutes(Dictionary<string, string> values)
+    {
+        if (!values.TryGetValue(CredNames.ExpiresAt, out var expireValue))
+            return null;
+
+        if (!DateTime.TryParse(expireValue, out var expireDate))
+            return null;
+
+        var difference = expireDate - DateTime.UtcNow;
+
+        return (int)difference.TotalMinutes - 5;
+    }
 
     public async Task<Dictionary<string, string>> RefreshToken(Dictionary<string, string> values,
         CancellationToken cancellationToken)
