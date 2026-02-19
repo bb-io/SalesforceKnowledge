@@ -44,9 +44,10 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
     }
 
     [PollingEvent("On published articles last published", "Polling event, that periodically checks for  published articles in Salesforce.")]
-    public async Task<PollingEventResponse<DateMemory, ListAllArticlesResponse>> OnPublishedArticlesCreated(
-    PollingEventRequest<DateMemory> request,[PollingEventParameter] CategoryFilterRequest category,
-                                            [PollingEventParameter] VisibilityFilterRequest visibility)
+    public async Task<PollingEventResponse<DateMemory, SearchArticlesResponse>> OnPublishedArticlesCreated(
+        PollingEventRequest<DateMemory> request,
+        [PollingEventParameter] CategoryFilterRequest category,
+        [PollingEventParameter] VisibilityFilterRequest visibility)
     {
         var langEndpoint = "/services/data/v57.0/knowledgeManagement/settings";
         var lang = new SalesforceRequest(langEndpoint, Method.Get, Creds);
@@ -56,11 +57,11 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
 
         if (request.Memory == null)
         {
-            return new PollingEventResponse<DateMemory, ListAllArticlesResponse>
+            return new PollingEventResponse<DateMemory, SearchArticlesResponse>
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-                Result = new ListAllArticlesResponse { Records = Array.Empty<ArticleDto>() }
+                Result = new SearchArticlesResponse([])
             };
         }
 
@@ -136,11 +137,11 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
          .Select(a => new ArticleDto(a, locale))
          .ToArray();
 
-        return new PollingEventResponse<DateMemory, ListAllArticlesResponse>
+        return new PollingEventResponse<DateMemory, SearchArticlesResponse>
         {
             FlyBird = records.Length > 0,
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new ListAllArticlesResponse { Records = records }
+            Result = new SearchArticlesResponse(records.ToList())
         };
     }
 

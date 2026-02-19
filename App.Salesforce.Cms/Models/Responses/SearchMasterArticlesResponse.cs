@@ -2,4 +2,4 @@
 
 namespace Apps.Salesforce.Cms.Models.Responses;
 
-public record GetArticleCustomContent(List<LayoutItemDto> Items);
+public record SearchMasterArticlesResponse(List<MasterArticleDto> Items);

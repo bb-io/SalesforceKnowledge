@@ -2,7 +2,7 @@
 
 namespace Apps.Salesforce.Cms.Models.Responses;
 
-public class CreateArticleDraftResponse
+public record CreateArticleDraftResponse
 {
     [Display("Draft version ID")]
     public string DraftVersionId { get; set; }

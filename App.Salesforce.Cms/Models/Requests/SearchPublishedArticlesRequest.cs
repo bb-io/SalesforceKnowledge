@@ -1,8 +1,10 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Salesforce.Cms.Helper;
+using Apps.Salesforce.Cms.Models.Utility.Filters;
+using Blackbird.Applications.Sdk.Common;
 
 namespace Apps.Salesforce.Cms.Models.Requests;
 
-public class SearchFilter
+public class SearchPublishedArticlesRequest : IPublishedDateRange
 {
     [Display("Published after")]
     public DateTime? PublishedAfter { get; set; }
@@ -21,4 +23,9 @@ public class SearchFilter
 
     [Display("Excluded category group names")]
     public IEnumerable<string>? ExcludedGroupNames { get; set; }
+
+    public void Validate()
+    {
+        this.ValidateDates();
+    }
 }

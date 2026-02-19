@@ -54,7 +54,7 @@ public class PollingTests:TestBase
 
         var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" },
             new VisibilityFilterRequest { IsVisibleInCsp=false});
-        var articles = result.Result.Records;
+        var articles = result.Result?.Items;
 
         foreach (var article in articles)
         {

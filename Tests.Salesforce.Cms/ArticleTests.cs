@@ -15,7 +15,7 @@ public class ArticleTests : TestBase
     {
         // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new MasterArticleSearchFilters { };
+        var input = new SearchMasterArticlesRequest { };
 
         // Act
         var result = await action.ListAllArticles(input);
@@ -45,14 +45,14 @@ public class ArticleTests : TestBase
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var filter = new SearchFilter 
+        var filter = new SearchPublishedArticlesRequest 
         { 
             //GroupName = "Blackbird" 
         };
 
         var result = await action.ListAllPublishedArticles(filter);
 
-        foreach (var article in result.Records)
+        foreach (var article in result.Items)
         {
             Console.WriteLine($"{article.Id} - {article.Title}");
             Assert.IsNotNull(article);

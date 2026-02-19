@@ -1,8 +1,10 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Salesforce.Cms.Helper;
+using Apps.Salesforce.Cms.Models.Utility.Filters;
+using Blackbird.Applications.Sdk.Common;
 
 namespace Apps.Salesforce.Cms.Models.Requests;
 
-public class MasterArticleSearchFilters
+public class SearchMasterArticlesRequest : ICreatedDateRange, IUpdatedDateRange, IPublishedDateRange
 {
     [Display("Created after")]
     public DateTime? CreatedAfter { get; set; }
@@ -27,4 +29,9 @@ public class MasterArticleSearchFilters
 
     [Display("Archived")]
     public bool? Archived { get; set; }
+
+    public void Validate()
+    {
+        this.ValidateDates();
+    }
 }
