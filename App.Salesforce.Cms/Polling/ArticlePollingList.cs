@@ -28,7 +28,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             };
         }
 
-        var articles = await GetMasterArticles(request.Memory.LastInteractionDate);
+        var articles = await GetArticles(request.Memory.LastInteractionDate);
 
         return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
         {
@@ -52,7 +52,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             };
         }
 
-        var articles = await GetMasterArticles(request.Memory.LastInteractionDate, "CreatedDate");
+        var articles = await GetArticles(request.Memory.LastInteractionDate, "CreatedDate");
 
         return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
         {
@@ -164,7 +164,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         };
     }
 
-    private async Task<List<MasterArticleDto>> GetMasterArticles(DateTime sinceDate, string dateField = "LastModifiedDate")
+    private async Task<List<MasterArticleDto>> GetArticles(DateTime sinceDate, string dateField = "LastModifiedDate")
     {
         string dateFilter = sinceDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 
@@ -172,7 +172,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             $"""
             SELECT 
                 FIELDS(ALL) 
-            FROM KnowledgeArticle 
+            FROM Knowledge__kav 
             WHERE 
                 {dateField} > {dateFilter} AND 
                 IsDeleted = false 
