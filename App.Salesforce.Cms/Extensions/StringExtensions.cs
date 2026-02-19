@@ -12,4 +12,7 @@ public static class StringExtensions
             ? $"{str}&{queryString}"
             : $"{str}?{queryString}";
     }
+
+    public static string ToLanguageHeaderFormat(this string str)
+        => str.ToLower().Replace("_", "-");
 }

@@ -1,8 +1,8 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Requests;
+namespace Apps.Salesforce.Cms.Models.Identifiers;
 
-public class ArticleRequest
+public class ArticleIdentifier
 {
     [Display("Article ID")]
     public string ArticleId { get; set; }

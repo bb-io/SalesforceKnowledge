@@ -1,6 +1,6 @@
 ﻿namespace App.Salesforce.Cms.Models.Requests;
 
-public class CreateArticleDraftRequest : ArticleRequest
+public class CreateArticleDraftRequest
 {
     public string Locale { get; set; }
     

@@ -1,5 +1,5 @@
 ﻿using App.Salesforce.Cms.Constants;
-using Apps.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Utility.Error;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
@@ -47,22 +47,34 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
 
     protected override Exception ConfigureErrorException(RestResponse response)
     {
-        if (string.IsNullOrEmpty(response.Content))
+        var content = response.Content;
+        if (string.IsNullOrEmpty(content))
         {
-            if (string.IsNullOrEmpty(response.ErrorMessage))
+            return new PluginApplicationException(
+                $"Status code: {response.StatusCode}, but no content or error message provided."
+            );
+        }
+
+        if (content.TrimStart().StartsWith('['))
+        {
+            var errors = JsonConvert.DeserializeObject<List<ErrorResponse>>(content);
+            if (errors != null && errors.Count != 0)
             {
-                return new PluginApplicationException($"Status code: {response.StatusCode}, but no content or error message provided.");
+                var errorMessages = errors.SelectMany(x => x.Errors);
+                string msg = string.Join("; ", errorMessages.Select(x => x.Message));
+                return new PluginApplicationException($"Status code: {response.StatusCode}. {msg}");
             }
-
-            return new PluginApplicationException(response.ErrorMessage);
         }
-
-        var errorDto = JsonConvert.DeserializeObject<List<ErrorDto>>(response.Content!);
-        if (errorDto == null || errorDto.Count == 0)
+        else
         {
-            return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
+            var errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(content);
+            if (errorResponse?.Errors != null && errorResponse.Errors.Count != 0)
+            {
+                string msg = string.Join("; ", errorResponse.Errors.Select(x => x.Message));
+                return new PluginApplicationException($"Status code: {response.StatusCode}. {msg}");
+            }
         }
 
-        return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
+        return new PluginApplicationException($"Status code: {response.StatusCode}, {content}");
     }
 }

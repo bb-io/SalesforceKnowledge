@@ -1,8 +1,8 @@
-namespace Apps.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Utility.Error;
 
 using Newtonsoft.Json;
 
-public class ErrorDto
+public class Error
 {
     [JsonProperty("message")]
     public string Message { get; set; } = string.Empty;

@@ -2,7 +2,7 @@
 
 namespace App.Salesforce.Cms.Models.Requests;
 
-public class SubmitToTranslationRequest : ArticleRequest
+public class SubmitToTranslationRequest
 {
     public string Locale { get; set; }
     [Display("Assignee ID")] public string AssigneeId { get; set; }

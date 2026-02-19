@@ -2,7 +2,7 @@
 
 namespace App.Salesforce.Cms.Models.Requests;
 
-public class PublishKnowledgeTranslationRequest : ArticleRequest
+public class PublishKnowledgeTranslationRequest
 {
     public string Locale { get; set; }
     

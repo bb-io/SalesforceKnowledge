@@ -1,4 +1,5 @@
 ﻿using App.Salesforce.Cms.Constants;
+using App.Salesforce.Cms.Extensions;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using RestSharp;

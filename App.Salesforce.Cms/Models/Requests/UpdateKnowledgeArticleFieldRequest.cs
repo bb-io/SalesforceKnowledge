@@ -2,7 +2,7 @@
 
 namespace App.Salesforce.Cms.Models.Requests;
 
-public class UpdateKnowledgeArticleFieldRequest : ArticleRequest
+public class UpdateKnowledgeArticleFieldRequest
 {
     public string Locale { get; set; }
 

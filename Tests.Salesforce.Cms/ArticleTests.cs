@@ -1,8 +1,9 @@
-﻿using App.Salesforce.Cms.Actions;
+﻿using Salesforce.CmsTests.Base;
+using App.Salesforce.Cms.Actions;
 using App.Salesforce.Cms.Models.Requests;
 using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Models.Identifiers;
 using Blackbird.Applications.Sdk.Common.Files;
-using Salesforce.CmsTests.Base;
 
 namespace Tests.Salesforce.Cms;
 
@@ -55,7 +56,12 @@ public class ArticleTests : TestBase
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var result = await action.ListAllPublishedArticles(new searchFilter { GroupName="Blackbird"  });
+        var filter = new searchFilter 
+        { 
+            //GroupName = "Blackbird" 
+        };
+
+        var result = await action.ListAllPublishedArticles(filter);
 
         foreach (var article in result.Records)
         {
@@ -72,9 +78,9 @@ public class ArticleTests : TestBase
     public async Task SearchKnowledgeArticleVersions_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleRequest
+        var input = new ArticleIdentifier
         {
-            ArticleId= "kA067000000E03gCAC"
+            ArticleId = "kA067000000E03gCAC"
         };
         var result = await action.ListAllArticlesVersions(input);
 
@@ -89,7 +95,7 @@ public class ArticleTests : TestBase
     public async Task GetArticleInfo_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleRequest
+        var input = new ArticleIdentifier
         {
             ArticleId = "kA067000000E03gCAC"   
         };
@@ -104,12 +110,12 @@ public class ArticleTests : TestBase
     public async Task GetArticleContentAsObject_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+        var input = new LocaleIdentifier
         {
-            ArticleId = "kA067000000E03gCAC",
             Locale = "en_US"
         };
-        var result = await action.GetArticleContent(input);
+        var result = await action.GetArticleContent(articleInput, input);
 
  
         Console.WriteLine($"{result.Id} - {result.Title}");
@@ -120,12 +126,12 @@ public class ArticleTests : TestBase
     public async Task GetArticleCustomContentAsObject_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+        var input = new LocaleIdentifier
         {
-            ArticleId = "kA067000000E03gCAC",
             Locale = "en_US"
         };
-        var result = await action.GetArticleCustomContent(input);
+        var result = await action.GetArticleCustomContent(articleInput, input);
 
         foreach (var article in result.Items)
         {
@@ -138,14 +144,19 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task GetArticleContentAsHtml_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
+        var input = new DownloadArticleRequest
         {
-            ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US"
+            ContentId = "kA0J5000000g47hKAA",
         };
-        var result = await action.GetArticleContentAsHtml(input, null);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
+        // Act
+        var result = await action.GetArticleContentAsHtml(input, locale);
+
+        // Assert
+        Console.WriteLine(result.Content.Name);
         Assert.IsNotNull(result);
     }
 
@@ -169,35 +180,32 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task TranslateFromHtml_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new TranslateFromHtmlRequest
+        var input = new UploadArticleRequest
         {
-            ArticleId = "kA067000000E03gCAC",
-            //ArticleId = "kA0J5000000g3RqKAI",
+            //ContentId = "kA0J5000000g47hKAA",
             Locale = "nl_NL",
-            File = new FileReference
-            {
-                Name = "test.html"
-            }
+            Content = new FileReference { Name = "test blueprints.html" },
+            Publish = true,
         };
-        await action.TranslateFromHtml(input, true);
 
-        Assert.IsTrue(true);
+        // Act
+        await action.TranslateFromHtml(input);
     }
-
 
     [TestMethod]
     public async Task SubmitKnowledgeArticleToTranslation_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
         var input = new SubmitToTranslationRequest
         {
-            ArticleId = "kA067000000E03gCAC",
             Locale = "en_US",
             AssigneeId = "0056700000Dd6t7AAB",
         };
 
-        var result =  action.SubmitToTranslation(input);
+        var result =  action.SubmitToTranslation(articleInput, input);
 
         Assert.IsTrue(true);       
     }
@@ -206,13 +214,13 @@ public class ArticleTests : TestBase
     public async Task PublishKnowledgeTranslation_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
+        var articleInput = new ArticleIdentifier { ArticleId = "ka0J5000000fy2ZIAQ" };
         var input = new PublishKnowledgeTranslationRequest
         {
-            ArticleId = "ka0J5000000fy2ZIAQ",
             Locale = "en_US",
         };
 
-        var result = action.PublishKnowledgeTranslation(input);
+        var result = action.PublishKnowledgeTranslation(articleInput, input);
 
         Assert.IsTrue(true);
     }
@@ -221,13 +229,13 @@ public class ArticleTests : TestBase
     public async Task CreateDraftKnowledgeTranslation_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
+        var articleInput = new ArticleIdentifier { ArticleId = "ka067000000EMXVAA4" };
         var input = new CreateArticleDraftRequest
         {
-            ArticleId = "ka067000000EMXVAA4",
             Locale = "en_US",
         };
 
-        var result = action.CreatedArticleDraft(input);
+        var result = action.CreatedArticleDraft(articleInput, input);
 
         Assert.IsTrue(true);
     }
@@ -249,14 +257,30 @@ public class ArticleTests : TestBase
     public async Task UpdateKnowledgeArticleField_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+
         var input = new UpdateKnowledgeArticleFieldRequest
         {
-            ArticleId = "kA067000000E03gCAC",
             FieldName = "title",
             FieldValue = "New Title 03/21",
             Locale = "en_US"
         };
-        var result = action.UpdateKnowledgeArticleField(input,true);
+        var result = action.UpdateKnowledgeArticleField(articleInput, input, true);
         Assert.IsNotNull(true);
+    }
+
+    [TestMethod]
+    public async Task GetArticleIdFromHtmlFile_IsSuccess()
+    {
+        // Arrange
+        var action = new ArticleActions(InvocationContext, FileManager);
+        var input = new GetIdFromFileRequest { File = new FileReference { Name = "my art.html" } };
+
+        // Act
+        var result = await action.GetArticleIdFromHtmlFile(input);
+
+        // Assert
+        Console.WriteLine(result);
+        Assert.IsNotNull(result);
     }
 }
