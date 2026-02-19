@@ -1,6 +1,6 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Responses;
+namespace Apps.Salesforce.Cms.Models.Responses;
 
 public class CreateArticleDraftResponse
 {

@@ -1,7 +1,7 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Files;
 
-namespace App.Salesforce.Cms.Models.Requests;
+namespace Apps.Salesforce.Cms.Models.Requests;
 
 public class GetIdFromFileRequest
 {

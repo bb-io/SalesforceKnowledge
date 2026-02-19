@@ -1,6 +1,6 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Requests;
+namespace Apps.Salesforce.Cms.Models.Requests;
 
 public class SubmitToTranslationRequest
 {

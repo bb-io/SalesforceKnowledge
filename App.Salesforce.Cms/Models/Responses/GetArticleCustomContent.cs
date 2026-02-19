@@ -1,6 +1,6 @@
 ﻿using Apps.Salesforce.Cms.Models.Dtos;
 
-namespace App.Salesforce.Cms.Models.Responses;
+namespace Apps.Salesforce.Cms.Models.Responses;
 
 public class GetArticleCustomContent
 {

@@ -4,7 +4,7 @@ using Blackbird.Applications.Sdk.Common.Files;
 using Blackbird.Applications.Sdk.Common.Dynamic;
 using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 
-namespace App.Salesforce.Cms.Models.Requests;
+namespace Apps.Salesforce.Cms.Models.Requests;
 
 public class UploadArticleRequest : IUploadContentInput
 {

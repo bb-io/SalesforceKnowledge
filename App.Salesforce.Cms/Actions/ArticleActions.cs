@@ -1,6 +1,4 @@
-﻿using App.Salesforce.Cms.Models.Requests;
-using App.Salesforce.Cms.Models.Responses;
-using Apps.Salesforce.Cms;
+﻿using Apps.Salesforce.Cms;
 using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms.Helper;
