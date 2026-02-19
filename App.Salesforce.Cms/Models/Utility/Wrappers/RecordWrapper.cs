@@ -2,5 +2,5 @@
 
 public class RecordWrapper<T>
 {
-    public List<T> Records { get; set; } = [];
+    public IEnumerable<T> Records { get; set; } = [];
 }

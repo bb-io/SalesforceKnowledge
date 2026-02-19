@@ -29,7 +29,7 @@ public class PollingTests:TestBase
 
         foreach (var article in articles)
         {
-            Console.WriteLine($"ID: {article.Id}, CreatedDate: {article.CreatedDate}");
+            Console.WriteLine($"ID: {article.ContentId}, CreatedDate: {article.CreatedDate}");
         }
         var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
         Console.WriteLine(json);
@@ -87,7 +87,7 @@ public class PollingTests:TestBase
 
         foreach (var article in articles)
         {
-            Console.WriteLine($"ID: {article.Id}, UpdatedDate: {article.LastModifiedDate}");
+            Console.WriteLine($"ID: {article.ContentId}, UpdatedDate: {article.LastModifiedDate}");
         }
 
         Assert.IsNotNull(result);

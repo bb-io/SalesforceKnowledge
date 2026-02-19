@@ -1,11 +1,14 @@
 ﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
+using Newtonsoft.Json;
 
 namespace Apps.Salesforce.Cms.Models.Dtos;
 
-public class MasterArticleDto
+public class MasterArticleDto : IDownloadContentInput
 {
     [Display("Article ID")]
-    public string Id { get; set; } = string.Empty;
+    [JsonProperty("Id")]
+    public string ContentId { get; set; } = string.Empty;
 
     [Display("Master language")]
     public string MasterLanguage { get; set; } = string.Empty;

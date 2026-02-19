@@ -21,6 +21,10 @@ public class MasterArticleSearchFilters
 
     [Display("Published before")]
     public DateTime? PublishedBefore { get; set; }
+
+    [Display("Published")]
     public bool? Published { get; set; }
+
+    [Display("Archived")]
     public bool? Archived { get; set; }
 }

@@ -7,6 +7,8 @@ using Apps.Salesforce.Cms.Helper;
 using Apps.Salesforce.Cms.Models.Dtos;
 using Apps.Salesforce.Cms.Models.Identifiers;
 using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Models.Responses;
+using Apps.Salesforce.Cms.Models.Utility.Wrappers;
 using Apps.Salesforce.Cms.Utils;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Actions;
@@ -33,15 +35,16 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 {
     #region List actions
 
+    [BlueprintActionDefinition(BlueprintAction.SearchContent)]
     [Action("Search master knowledge articles", Description = "Search all master knowledge articles")]
-    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter] MasterArticleSearchFilters input)
+    public async Task<SearchArticlesResponse> ListAllArticles([ActionParameter] MasterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        var result = await Client.ExecuteWithErrorHandling<ListAllMasterArticlesResponse>(request)!;
+        var result = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(request);
         result.Records = result.Records.Where(a => a.IsDeleted != true);
 
         #region filters
@@ -79,7 +82,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         }
         #endregion
 
-        return result;
+        return new(result.Records.ToList());
     }
 
     [Action("Search all published articles translations", Description = "Search all published articles translations")]

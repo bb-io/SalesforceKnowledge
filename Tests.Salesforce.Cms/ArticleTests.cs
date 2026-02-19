@@ -12,17 +12,17 @@ namespace Tests.Salesforce.Cms;
 public class ArticleTests : TestBase
 {
     [TestMethod]
-    public async Task SearchAllMasterKnowledge_IsSuccess()
+    public async Task SearchAllMasterKnowledge_ReturnsAllArticles()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+        var input = new MasterArticleSearchFilters { };
 
-        var result = await action.ListAllArticles(new MasterArticleSearchFilters
-        {
+        // Act
+        var result = await action.ListAllArticles(input);
 
-        });
-
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
