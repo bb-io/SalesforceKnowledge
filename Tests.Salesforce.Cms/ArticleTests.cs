@@ -4,6 +4,7 @@ using App.Salesforce.Cms.Models.Requests;
 using Apps.Salesforce.Cms.Models.Requests;
 using Apps.Salesforce.Cms.Models.Identifiers;
 using Blackbird.Applications.Sdk.Common.Files;
+using Newtonsoft.Json;
 
 namespace Tests.Salesforce.Cms;
 
@@ -15,7 +16,7 @@ public class ArticleTests : TestBase
     {
         var action = new ArticleActions(InvocationContext, FileManager);
 
-        var result = await action.ListAllArticles(new masterArticleSearchFilters
+        var result = await action.ListAllArticles(new MasterArticleSearchFilters
         {
 
         });
@@ -56,7 +57,7 @@ public class ArticleTests : TestBase
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
         var action = new ArticleActions(InvocationContext, FileManager);
-        var filter = new searchFilter 
+        var filter = new SearchFilter 
         { 
             //GroupName = "Blackbird" 
         };
@@ -228,16 +229,18 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task CreateDraftKnowledgeTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
         var articleInput = new ArticleIdentifier { ArticleId = "ka067000000EMXVAA4" };
-        var input = new CreateArticleDraftRequest
-        {
-            Locale = "en_US",
-        };
+        var input = new CreateArticleDraftRequest { };
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
-        var result = action.CreatedArticleDraft(articleInput, input);
+        // Act
+        var result = await action.CreatedArticleDraft(articleInput, input, locale);
 
-        Assert.IsTrue(true);
+        // Assert
+        Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
@@ -256,17 +259,19 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task UpdateKnowledgeArticleField_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
         var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
-
         var input = new UpdateKnowledgeArticleFieldRequest
         {
             FieldName = "title",
             FieldValue = "New Title 03/21",
-            Locale = "en_US"
+            Publish = true,
         };
-        var result = action.UpdateKnowledgeArticleField(articleInput, input, true);
-        Assert.IsNotNull(true);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+
+        // Act
+        await action.UpdateKnowledgeArticleField(articleInput, input, locale);
     }
 
     [TestMethod]

@@ -1,5 +1,4 @@
-﻿using App.Salesforce.Cms.Actions.Base;
-using App.Salesforce.Cms.Api;
+﻿using App.Salesforce.Cms.Api;
 using App.Salesforce.Cms.Models.Dtos;
 using App.Salesforce.Cms.Models.Responses;
 using Apps.Salesforce.Cms.Models.Dtos;
@@ -12,7 +11,7 @@ using RestSharp;
 namespace Apps.Salesforce.Cms.Polling;
 
 [PollingEventList]
-public class ArticlePollingList(InvocationContext invocationContext) : SalesforceActions(invocationContext)
+public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
     [PollingEvent("On articles created", "Polling event, that periodically checks for new articles created in Salesforce.")]
     public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesCreated(

@@ -1,18 +1,18 @@
 ﻿using App.Salesforce.Cms.Api;
 using Blackbird.Applications.Sdk.Common;
-using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Invocation;
+using Blackbird.Applications.Sdk.Common.Authentication;
 
-namespace App.Salesforce.Cms.Actions.Base;
+namespace Apps.Salesforce.Cms;
 
-public class SalesforceActions : BaseInvocable
+public class SalesforceInvocable : BaseInvocable
 {
     protected IEnumerable<AuthenticationCredentialsProvider> Creds =>
         InvocationContext.AuthenticationCredentialsProviders;
     
     protected SalesforceClient Client { get; }
 
-    protected SalesforceActions(InvocationContext invocationContext) : base(invocationContext)
+    protected SalesforceInvocable(InvocationContext invocationContext) : base(invocationContext)
     {
         Client = new(Creds);
     }

@@ -1,8 +1,8 @@
-﻿using App.Salesforce.Cms.Actions.Base;
-using App.Salesforce.Cms.Api;
+﻿using App.Salesforce.Cms.Api;
 using App.Salesforce.Cms.Models.Dtos;
 using App.Salesforce.Cms.Models.Requests;
 using App.Salesforce.Cms.Models.Responses;
+using Apps.Salesforce.Cms;
 using Apps.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms.Helper;
 using Apps.Salesforce.Cms.Models.Dtos;
@@ -30,12 +30,12 @@ namespace App.Salesforce.Cms.Actions;
 
 [ActionList("Articles")]
 public class ArticleActions(InvocationContext invocationContext, IFileManagementClient fileManagementClient)
-    : SalesforceActions(invocationContext)
+    : SalesforceInvocable(invocationContext)
 {
     #region List actions
 
     [Action("Search master knowledge articles", Description = "Search all master knowledge articles")]
-    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter] masterArticleSearchFilters input)
+    public async Task<ListAllMasterArticlesResponse> ListAllArticles([ActionParameter] MasterArticleSearchFilters input)
     {
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
         var endpoint = $"services/data/v57.0/query?q={query}";
@@ -122,7 +122,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     }
 
     [Action("Search published articles", Description = "Search all published articles")]
-    public async Task<ListAllArticlesResponse> ListAllPublishedArticles([ActionParameter]searchFilter input)
+    public async Task<ListAllArticlesResponse> ListAllPublishedArticles([ActionParameter] SearchFilter input)
     {
         var languageDetails = await GetKnowledgeSettings();
 
@@ -344,7 +344,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     public async Task<ListAllArticlesResponse> GetArticlesNotTranslated(
         [ActionParameter] ListPublishedTranslationsRequest input)
     {
-        var allArticles = (await ListAllPublishedArticles(new searchFilter())).Records;
+        var allArticles = (await ListAllPublishedArticles(new SearchFilter())).Records;
         var allTranslations = (await ListPublishedArticlesTranslations(input, new())).Records;
 
         return new()
@@ -412,21 +412,22 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     [Action("Create draft for knowledge article", Description = "Create draft for knowledge article")]
     public async Task<CreateArticleDraftResponse> CreatedArticleDraft(
         [ActionParameter] ArticleIdentifier articleInput,
-        [ActionParameter] CreateArticleDraftRequest input)
+        [ActionParameter] CreateArticleDraftRequest input,
+        [ActionParameter] LocaleIdentifier locale)
     {
         var versions = await ListAllArticlesVersions(new() { ArticleId = articleInput.ArticleId })
         ?? throw new PluginApplicationException("No versions returned for the article.");
 
         var existingDraft = versions.Records
-            .FirstOrDefault(x => x.Language == input.Locale &&
+            .FirstOrDefault(x => x.Language == locale.Locale &&
                                  x.PublishStatus.Equals("Draft", StringComparison.OrdinalIgnoreCase));
         if (existingDraft != null)
             return new() { DraftVersionId = existingDraft.Id };
 
-        var isTranslation = (await GetKnowledgeSettings()).DefaultLanguage != input.Locale;
+        var isTranslation = (await GetKnowledgeSettings()).DefaultLanguage != locale.Locale;
 
         var onlineSameLocale = versions.Records
-            .FirstOrDefault(x => x.Language == input.Locale &&
+            .FirstOrDefault(x => x.Language == locale.Locale &&
                                  x.PublishStatus.Equals("Online", StringComparison.OrdinalIgnoreCase));
 
         var endpoint = "services/data/v57.0/actions/standard/createDraftFromOnlineKnowledgeArticle";
@@ -463,7 +464,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                 new
                 {
                     action = "CREATE_TRANSLATION_DRAFT",
-                    language = input.Locale,
+                    language = locale.Locale,
                     articleVersionId = masterOnline.Id,
                     unpublish = false
                 }
@@ -495,27 +496,26 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     }
 
     [Action("Update knowledge article field", Description = "Update knowledge article field")]
-    public Task UpdateKnowledgeArticleField(
+    public async Task UpdateKnowledgeArticleField(
         [ActionParameter] ArticleIdentifier articleInput,
         [ActionParameter] UpdateKnowledgeArticleFieldRequest input,
-        [ActionParameter][Display("Publish changes")] bool publish)
+        [ActionParameter] LocaleIdentifier locale)
     {
-        return UpdateMultipleArticleFields(
+        await UpdateMultipleArticleFields(
             articleInput.ArticleId,
-            input.Locale,
-            new()
-            {
-                { input.FieldName, input.FieldValue }
-            }, publish);
+            locale.Locale,
+            new() { { input.FieldName, input.FieldValue } }, 
+            input.Publish
+        );
     }
 
     [Action("Get knowledge language settings", Description = "Get knowledge language settings")]
-    public Task<KnowledgeSettingsDto> GetKnowledgeSettings()
+    public async Task<KnowledgeSettingsDto> GetKnowledgeSettings()
     {
         var endpoint = "/services/data/v57.0/knowledgeManagement/settings";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        return Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(request)!;
+        return await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(request);
     }
 
     #region Utils
@@ -531,7 +531,8 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var articleIdentifier = new ArticleIdentifier { ArticleId = articleId };
         var draftVersion = await CreatedArticleDraft(
             articleIdentifier,
-            new CreateArticleDraftRequest { Locale = locale }
+            new CreateArticleDraftRequest { },
+            new LocaleIdentifier { Locale = locale }
         );
 
         var articleMetadata = await GetArticleInfo(articleIdentifier);
