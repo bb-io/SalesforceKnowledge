@@ -1,5 +1,4 @@
 ﻿using RestSharp;
-using System.Net;
 using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Models.Dtos;
 using Apps.Salesforce.Cms.Models.Utility.Wrappers;
@@ -28,7 +27,7 @@ public class ArticleDataHandler(InvocationContext context) : SalesforceInvocable
             query += $" AND Title LIKE '%{safeSearchString}%'";
         }
 
-        var endpoint = $"services/data/v57.0/query?q={WebUtility.UrlEncode(query)}";
+        var endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
         var response = await Client.ExecuteWithErrorHandling<RecordWrapper<ArticleVersionDto>>(request);

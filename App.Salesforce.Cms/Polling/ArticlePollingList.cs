@@ -1,21 +1,46 @@
-﻿using Apps.Salesforce.Cms.Api;
+﻿using RestSharp;
+using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Models.Dtos;
 using Apps.Salesforce.Cms.Models.Requests;
 using Apps.Salesforce.Cms.Models.Responses;
 using Apps.Salesforce.Cms.Models.Utility.Wrappers;
 using Apps.Salesforce.Cms.Polling.Models;
-using Blackbird.Applications.Sdk.Common.Invocation;
+using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.Sdk.Common.Polling;
-using RestSharp;
+using Blackbird.Applications.Sdk.Common.Invocation;
 
 namespace Apps.Salesforce.Cms.Polling;
 
-[PollingEventList]
+[PollingEventList("Articles")]
 public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
-    [PollingEvent("On articles created", "Polling event, that periodically checks for new articles created in Salesforce.")]
+    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
+    [PollingEvent("On articles created or updated", "Search for created and updated articles")]
+    public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesUpdated(
+        PollingEventRequest<DateMemory> request)
+    {
+        if (request.Memory == null)
+        {
+            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+            {
+                FlyBird = false,
+                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow }
+            };
+        }
+
+        var articles = await GetMasterArticles(request.Memory.LastInteractionDate);
+
+        return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+        {
+            FlyBird = articles.Count > 0,
+            Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+            Result = new ListAllArticlesPollingResponse(articles)
+        };
+    }
+
+    [PollingEvent("On articles created", "Search for new created articles")]
     public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesCreated(
-               PollingEventRequest<DateMemory> request)
+        PollingEventRequest<DateMemory> request)
     {
         if (request.Memory == null)
         {
@@ -23,27 +48,21 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-                Result = new ListAllArticlesPollingResponse(Array.Empty<MasterArticleDto>())
+                Result = new ListAllArticlesPollingResponse([])
             };
         }
 
-        var dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
-        var query = $"SELECT FIELDS(ALL) FROM KnowledgeArticle WHERE CreatedDate > {dateFilter} ORDER BY CreatedDate DESC LIMIT 200";
-        var endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
+        var articles = await GetMasterArticles(request.Memory.LastInteractionDate, "CreatedDate");
 
-        var articles = await GetArticles(endpoint);
         return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
         {
-            FlyBird = articles.Length > 0,
-            Memory = new DateMemory
-            {
-                LastInteractionDate = DateTime.UtcNow
-            },
+            FlyBird = articles.Count > 0,
+            Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
             Result = new ListAllArticlesPollingResponse(articles)
         };
     }
 
-    [PollingEvent("On published articles last published", "Polling event, that periodically checks for  published articles in Salesforce.")]
+    [PollingEvent("On published articles last published", "Search for published articles")]
     public async Task<PollingEventResponse<DateMemory, SearchArticlesResponse>> OnPublishedArticlesCreated(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] CategoryFilterRequest category,
@@ -145,37 +164,32 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         };
     }
 
-    [PollingEvent("On articles updated", "Polling event, that periodically checks for updated articles in Salesforce.")]
-    public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesUpdated(
-        PollingEventRequest<DateMemory> request)
+    private async Task<List<MasterArticleDto>> GetMasterArticles(DateTime sinceDate, string dateField = "LastModifiedDate")
     {
-        if (request.Memory == null)
-        {
-            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
-            {
-                FlyBird = false,
-                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow }
-            };
-        }
+        string dateFilter = sinceDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
 
-        var dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-dd'T'HH:mm:ss.fffK");
-        var query = $"SELECT FIELDS(ALL) FROM KnowledgeArticle WHERE LastModifiedDate > {dateFilter} ORDER BY LastModifiedDate DESC LIMIT 200";
-        var endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
+        string query = 
+            $"""
+            SELECT 
+                FIELDS(ALL) 
+            FROM KnowledgeArticle 
+            WHERE 
+                {dateField} > {dateFilter} AND 
+                IsDeleted = false 
+            ORDER BY {dateField} DESC 
+            LIMIT 200
+            """;
+        string endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
 
-        var articles = await GetArticles(endpoint);
-        return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
-        {
-            FlyBird = articles.Length > 0,
-            Memory = new DateMemory
-            {
-                LastInteractionDate = DateTime.UtcNow
-            },
-            Result = new ListAllArticlesPollingResponse(articles)
-        };
+        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+        var response = await Client.ExecuteWithErrorHandling<ListAllArticlesPollingResponse>(request);
+
+        return response?.Records?.ToList() ?? [];
     }
 
     private async Task<Dictionary<string, KnowledgeArticleVisibilityDto>> LoadVisibilityByArticleIdAsync(
-    IEnumerable<string> articleIds, string locale)
+        IEnumerable<string> articleIds, 
+        string locale)
     {
         var ids = articleIds.Distinct().ToArray();
         if (ids.Length == 0) return new();
@@ -214,11 +228,5 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         }
 
         return map;
-    }
-    private async Task<MasterArticleDto[]> GetArticles(string endpoint)
-    {
-        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        var response = await Client.ExecuteWithErrorHandling<ListAllArticlesPollingResponse>(request);
-        return response.Records.Where(x => x.IsDeleted == false).ToArray();
     }
 }

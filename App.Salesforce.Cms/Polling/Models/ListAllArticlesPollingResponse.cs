@@ -3,17 +3,11 @@ using Blackbird.Applications.Sdk.Common;
 
 namespace Apps.Salesforce.Cms.Polling.Models;
 
-public class ListAllArticlesPollingResponse
+public class ListAllArticlesPollingResponse(List<MasterArticleDto> records)
 {
     [Display("Total count")]
-    public int TotalCount { get; set; }
+    public int TotalCount { get; set; } = records.Count;
 
     [Display("Articles")]
-    public MasterArticleDto[] Records { get; set; }
-
-    public ListAllArticlesPollingResponse(MasterArticleDto[] records)
-    {
-        Records = records;
-        TotalCount = records?.Length ?? 0;
-    }
+    public List<MasterArticleDto> Records { get; set; } = records;
 }
