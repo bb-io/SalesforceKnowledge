@@ -1,6 +1,6 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class KnowledgeSettingsDto
 {

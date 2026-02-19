@@ -31,9 +31,9 @@ public class ArticleDataHandler(InvocationContext context) : SalesforceInvocable
         var endpoint = $"services/data/v57.0/query?q={WebUtility.UrlEncode(query)}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
-        var response = await Client.ExecuteWithErrorHandling<RecordWrapper<ArticleTestDto>>(request);
-        var grouped = response.Records.DistinctBy(x => x.Id);
+        var response = await Client.ExecuteWithErrorHandling<RecordWrapper<ArticleVersionDto>>(request);
+        var grouped = response.Records.DistinctBy(x => x.KnowledgeArticleId);
 
-        return grouped.Select(x => new DataSourceItem(x.Id, x.Title)).ToList();
+        return grouped.Select(x => new DataSourceItem(x.KnowledgeArticleId, x.Title)).ToList();
     }
 }

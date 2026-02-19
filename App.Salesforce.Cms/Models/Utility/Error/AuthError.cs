@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
 
-namespace App.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Utility.Error;
 
-public class SalesforceErrorDto
+public class AuthError
 {
     [JsonProperty("error")]
     public string Error { get; set; } = string.Empty;
