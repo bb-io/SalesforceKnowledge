@@ -7,7 +7,7 @@ using Blackbird.Applications.Sdk.Utils.RestSharp;
 using Newtonsoft.Json;
 using RestSharp;
 
-namespace App.Salesforce.Cms.Api;
+namespace Apps.Salesforce.Cms.Api;
 
 public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> creds) : BlackBirdRestClient(
     new RestClientOptions

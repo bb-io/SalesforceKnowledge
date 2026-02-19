@@ -1,12 +1,9 @@
-﻿using App.Salesforce.Cms.Models.Dtos;
-using Blackbird.Applications.Sdk.Common;
-using System.Text.Json.Serialization;
+﻿using Blackbird.Applications.Sdk.Common;
 
 namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class MasterArticleDto
 {
-
     [Display("Article ID")]
     public string Id { get; set; } = string.Empty;
 
@@ -54,13 +51,4 @@ public class MasterArticleDto
 
     [DefinitionIgnore]
     public bool IsDeleted { get; set; }
-}
-
-public class ArticleAttributes
-{
-    [Display("Article type")]
-    public string Type { get; set; } = string.Empty;
-
-    [Display("URL")]
-    public string Url { get; set; } = string.Empty;
 }

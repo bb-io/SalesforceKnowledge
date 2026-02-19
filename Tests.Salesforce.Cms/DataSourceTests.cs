@@ -1,16 +1,22 @@
 ﻿using Salesforce.CmsTests.Base;
+using Apps.Salesforce.Cms.Handlers;
 
-namespace Tests.Salesforce.Cms
+namespace Tests.Salesforce.Cms;
+
+[TestClass]
+public class DataSourceTests : TestBase
 {
-    [TestClass]
-    public class DataSourceTests : TestBase
+    [TestMethod]
+    public async Task ArticleDataHandler_ReturnsArticles()
     {
+        // Arrange
+        var handler = new ArticleDataHandler(InvocationContext);
 
-        [TestMethod]
-        public async Task DataHandler_works()
-        {
+        // Act
+        var result = await handler.GetDataAsync(new(), default);
 
-        }
-
+        // Assert
+        PrintDataHandlerResult(result);
+        Assert.IsNotNull(result);
     }
 }

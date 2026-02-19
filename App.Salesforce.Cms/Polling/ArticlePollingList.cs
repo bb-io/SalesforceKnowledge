@@ -1,8 +1,9 @@
-﻿using App.Salesforce.Cms.Api;
-using App.Salesforce.Cms.Models.Dtos;
+﻿using App.Salesforce.Cms.Models.Dtos;
 using App.Salesforce.Cms.Models.Responses;
+using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Models.Dtos;
 using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Models.Utility.Wrappers;
 using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Common.Polling;
@@ -189,7 +190,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         req.AddQueryParameter("q", q1);
         req.AddLocaleHeader(locale);
 
-        var r1 = await Client.ExecuteWithErrorHandling<SoqlResponse<KnowledgeArticleVisibilityDto>>(req);
+        var r1 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req);
         var map = r1?.Records?.ToDictionary(x => x.KnowledgeArticleId, x => x)
                   ?? new Dictionary<string, KnowledgeArticleVisibilityDto>();
 
@@ -205,7 +206,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             req2.AddQueryParameter("q", q2);
             req2.AddLocaleHeader(locale);
 
-            var r2 = await Client.ExecuteWithErrorHandling<SoqlResponse<KnowledgeArticleVisibilityDto>>(req2);
+            var r2 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req2);
             map = r2?.Records?
                 .GroupBy(x => x.KnowledgeArticleId)
                 .ToDictionary(g => g.Key, g => g.First())

@@ -1,8 +1,8 @@
-﻿using App.Salesforce.Cms.Api;
-using App.Salesforce.Cms.Models.Dtos;
+﻿using App.Salesforce.Cms.Models.Dtos;
 using App.Salesforce.Cms.Models.Requests;
 using App.Salesforce.Cms.Models.Responses;
 using Apps.Salesforce.Cms;
+using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms.Helper;
 using Apps.Salesforce.Cms.Models.Dtos;
@@ -85,10 +85,11 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
     [Action("Search all published articles translations", Description = "Search all published articles translations")]
     public async Task<ListAllArticlesResponse> ListPublishedArticlesTranslations(
-        [ActionParameter] ListPublishedTranslationsRequest input, [ActionParameter] CategoryFilterRequest category)
+        [ActionParameter] LocaleIdentifier locale, 
+        [ActionParameter] CategoryFilterRequest category)
     {
         var languageDetails = await GetKnowledgeSettings();
-        var result = await FetchPublishedArticles(input.Locale);
+        var result = await FetchPublishedArticles(locale.Locale);
 
         if (!string.IsNullOrEmpty(category.CategoryName))
         {
@@ -341,11 +342,10 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
     [Action("Get articles not translated in language",
         Description = "Get articles not translated in specific language")]
-    public async Task<ListAllArticlesResponse> GetArticlesNotTranslated(
-        [ActionParameter] ListPublishedTranslationsRequest input)
+    public async Task<ListAllArticlesResponse> GetArticlesNotTranslated([ActionParameter] LocaleIdentifier locale)
     {
         var allArticles = (await ListAllPublishedArticles(new SearchFilter())).Records;
-        var allTranslations = (await ListPublishedArticlesTranslations(input, new())).Records;
+        var allTranslations = (await ListPublishedArticlesTranslations(locale, new())).Records;
 
         return new()
         {
@@ -356,7 +356,8 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     [Action("Submit knowledge article to translation", Description = "Submit knowledge article to translation")]
     public async Task SubmitToTranslation(
         [ActionParameter] ArticleIdentifier articleInput,
-        [ActionParameter] SubmitToTranslationRequest input)
+        [ActionParameter] SubmitToTranslationRequest input,
+        [ActionParameter] LocaleIdentifier locale)
     {
         var endpoint = "services/data/v57.0/actions/standard/submitKnowledgeArticleForTranslation";
         var request = new SalesforceRequest(endpoint, Method.Post, Creds);
@@ -367,7 +368,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                 new
                 {
                     articleId = articleInput.ArticleId,
-                    language = input.Locale,
+                    language = locale.Locale,
                     assigneeId = input.AssigneeId,
                     dueDate = input.DueDate,
                     sendEmailNotification = input.SendEmailNotification
@@ -381,13 +382,14 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     [Action("Publish knowledge article draft", Description = "Publish knowledge article draft")]
     public async Task PublishKnowledgeTranslation(
         [ActionParameter] ArticleIdentifier articleInput,
-        [ActionParameter] PublishKnowledgeTranslationRequest input)
+        [ActionParameter] PublishKnowledgeTranslationRequest input,
+        [ActionParameter] LocaleIdentifier locale)
     {
         var versions = await ListAllArticlesVersions(new() { ArticleId = articleInput.ArticleId });
         var articleInDraft = versions.Records
-            .First(r => r.PublishStatus == "Draft" && r.Language == input.Locale);
+            .First(r => r.PublishStatus == "Draft" && r.Language == locale.Locale);
 
-        var pubAction = (await GetKnowledgeSettings()).DefaultLanguage == input.Locale
+        var pubAction = (await GetKnowledgeSettings()).DefaultLanguage == locale.Locale
             ? "PUBLISH_ARTICLE"
             : "PUBLISH_TRANSLATION";
 
@@ -546,7 +548,8 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         {
             await PublishKnowledgeTranslation(
                 articleIdentifier, 
-                new PublishKnowledgeTranslationRequest { Locale = locale }
+                new PublishKnowledgeTranslationRequest(),
+                new LocaleIdentifier { Locale = locale }
             );
         }
     }

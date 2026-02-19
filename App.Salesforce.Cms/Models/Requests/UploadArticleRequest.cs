@@ -1,5 +1,7 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Salesforce.Cms.Handlers;
+using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Files;
+using Blackbird.Applications.Sdk.Common.Dynamic;
 using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 
 namespace App.Salesforce.Cms.Models.Requests;
@@ -12,7 +14,7 @@ public class UploadArticleRequest : IUploadContentInput
     [Display("Locale")]
     public string Locale { get; set; }
 
-    [Display("Article ID")]
+    [Display("Article ID"), DataSource(typeof(ArticleDataHandler))]
     public string? ContentId { get; set; }
 
     [Display("Publish changes")]

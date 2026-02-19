@@ -21,35 +21,24 @@ public class ArticleTests : TestBase
 
         });
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id}");
-            Assert.IsNotNull(article);
-        }
-
         var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
         Console.WriteLine(json);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
-    public async Task SearchAllPublishedTranslation_IsSuccess()
+    public async Task SearchAllPublishedTranslation_ReturnsPublishedTranslations()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ListPublishedTranslationsRequest
-        {
-            Locale = "en_US"
-        };
-        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { });
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+        var category = new CategoryFilterRequest { };
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id} - {article.Title}");
-            Assert.IsNotNull(article);
-        }
+        // Act
+        var result = await action.ListPublishedArticlesTranslations(locale, category);
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
@@ -162,20 +151,18 @@ public class ArticleTests : TestBase
     }
 
     [TestMethod]
-    public async Task GetArticlesNotTranslated_IsSuccess()
+    public async Task GetArticlesNotTranslated_ReturnsNonTranslatedArticles()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ListPublishedTranslationsRequest
-        {
-            Locale = "en_US"
-        };
-        var result = await action.GetArticlesNotTranslated(input);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Title} - {article.Id}");
-            Assert.IsNotNull(result);
-        }
+        // Act
+        var result = await action.GetArticlesNotTranslated(locale);
+
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
@@ -198,32 +185,30 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task SubmitKnowledgeArticleToTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+        var article = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+        var locale = new LocaleIdentifier { Locale = "en_US" }; 
         var input = new SubmitToTranslationRequest
         {
-            Locale = "en_US",
             AssigneeId = "0056700000Dd6t7AAB",
         };
 
-        var result =  action.SubmitToTranslation(articleInput, input);
-
-        Assert.IsTrue(true);       
+        // Act
+        await action.SubmitToTranslation(article, input, locale); 
     }
 
     [TestMethod]
     public async Task PublishKnowledgeTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var articleInput = new ArticleIdentifier { ArticleId = "ka0J5000000fy2ZIAQ" };
-        var input = new PublishKnowledgeTranslationRequest
-        {
-            Locale = "en_US",
-        };
+        var article = new ArticleIdentifier { ArticleId = "ka0J5000000fy2ZIAQ" };
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+        var input = new PublishKnowledgeTranslationRequest { };
 
-        var result = action.PublishKnowledgeTranslation(articleInput, input);
-
-        Assert.IsTrue(true);
+        // Act
+        await action.PublishKnowledgeTranslation(article, input, locale);
     }
 
     [TestMethod]

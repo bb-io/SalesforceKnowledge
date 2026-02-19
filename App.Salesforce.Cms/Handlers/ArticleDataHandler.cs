@@ -1,0 +1,39 @@
+﻿using RestSharp;
+using System.Net;
+using Apps.Salesforce.Cms.Api;
+using Apps.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Utility.Wrappers;
+using Blackbird.Applications.Sdk.Common.Dynamic;
+using Blackbird.Applications.Sdk.Common.Invocation;
+
+namespace Apps.Salesforce.Cms.Handlers;
+
+public class ArticleDataHandler(InvocationContext context) : SalesforceInvocable(context), IAsyncDataSourceItemHandler
+{
+    public async Task<IEnumerable<DataSourceItem>> GetDataAsync(DataSourceContext context, CancellationToken ct)
+    {
+        var query = """            
+            SELECT 
+                KnowledgeArticleId,
+                Title, 
+                PublishStatus,
+                Language
+            FROM Knowledge__kav 
+            WHERE IsLatestVersion = true AND IsDeleted = false
+            """;
+
+        if (!string.IsNullOrWhiteSpace(context.SearchString))
+        {
+            var safeSearchString = context.SearchString.Replace("'", "\\'");
+            query += $" AND Title LIKE '%{safeSearchString}%'";
+        }
+
+        var endpoint = $"services/data/v57.0/query?q={WebUtility.UrlEncode(query)}";
+        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+
+        var response = await Client.ExecuteWithErrorHandling<RecordWrapper<ArticleTestDto>>(request);
+        var grouped = response.Records.DistinctBy(x => x.Id);
+
+        return grouped.Select(x => new DataSourceItem(x.Id, x.Title)).ToList();
+    }
+}

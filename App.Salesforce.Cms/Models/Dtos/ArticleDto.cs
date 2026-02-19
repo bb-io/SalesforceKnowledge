@@ -1,18 +1,23 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class ArticleDto
 {
-    [Display("ID")] public string Id { get; set; }
+    [Display("ID")] 
+    public string Id { get; set; }
 
+    [Display("Title")]
     public string Title { get; set; }
 
-    [Display("Article number")] public string ArticleNumber { get; set; }
+    [Display("Article number")] 
+    public string ArticleNumber { get; set; }
 
-    [Display("Master language")] public string MasterLanguage { get; set; }
+    [Display("Master language")] 
+    public string MasterLanguage { get; set; }
 
-    [Display("Total view count")] public int TotalViewCount { get; set; }
+    [Display("Total view count")] 
+    public int TotalViewCount { get; set; }
 
     [Display("Down vote count")]
     public int DownVoteCount { get; set; }
@@ -44,6 +49,8 @@ public class ArticleDto
     [Display("Visible to customer")]
     public bool? IsVisibleInCsp { get; set; }
 
+    public ArticleDto() { }
+
     public ArticleDto(PublishedArticleDto article, string masterLanguage)
     {
         Id = article.Id;
@@ -73,32 +80,4 @@ public class ArticleDto
         IsVisibleInPkb = article.IsVisibleInPkb;
         IsVisibleInCsp = article.IsVisibleInCsp;
     }
-
-    public ArticleDto()
-    {
-    }
-}
-
-public class CategoryGroupDto
-{
-    [Display("Group label")]
-    public string GroupLabel { get; set; }
-
-    [Display("Group name")]
-    public string GroupName { get; set; }
-
-    [Display("Selected categories")]
-    public IEnumerable<CategoryDto> SelectedCategories { get; set; }
-}
-
-public class CategoryDto
-{
-    [Display("Category label")]
-    public string CategoryLabel { get; set; }
-
-    [Display("Category name")]
-    public string CategoryName { get; set; }
-
-    [Display("Category URL")]
-    public string Url { get; set; }
 }
