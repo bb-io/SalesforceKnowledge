@@ -323,7 +323,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var allArticles = await ListAllPublishedArticles(new SearchPublishedArticlesRequest());
         var allTranslations = await ListPublishedArticlesTranslations(locale, new());
 
-        var filtered = allArticles.Items.Where(a1 => !allTranslations.Items.Any(a2 => a2.Id == a1.Id)).ToList();
+        var filtered = allArticles.Items.Where(a1 => !allTranslations.Items.Any(a2 => a2.ContentId == a1.ContentId)).ToList();
         return new(filtered);
     }
 

@@ -54,7 +54,7 @@ public class ArticleTests : TestBase
 
         foreach (var article in result.Items)
         {
-            Console.WriteLine($"{article.Id} - {article.Title}");
+            Console.WriteLine($"{article.ContentId} - {article.Title}");
             Assert.IsNotNull(article);
         }
 

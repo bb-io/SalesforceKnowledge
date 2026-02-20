@@ -1,11 +1,12 @@
 ﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
 
 namespace Apps.Salesforce.Cms.Models.Dtos;
 
-public class ArticleDto
+public class ArticleDto : IDownloadContentInput
 {
     [Display("ID")] 
-    public string Id { get; set; }
+    public string ContentId { get; set; }
 
     [Display("Title")]
     public string Title { get; set; }
@@ -53,7 +54,7 @@ public class ArticleDto
 
     public ArticleDto(PublishedArticleDto article, string masterLanguage)
     {
-        Id = article.Id;
+        ContentId = article.Id;
         Title = article.Title;
         ArticleNumber = article.ArticleNumber;
         MasterLanguage = masterLanguage;

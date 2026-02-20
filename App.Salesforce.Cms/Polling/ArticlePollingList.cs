@@ -14,7 +14,6 @@ namespace Apps.Salesforce.Cms.Polling;
 [PollingEventList("Articles")]
 public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
-    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
     [PollingEvent("On articles created or updated", "Triggered when articles are created or updated")]
     public async Task<PollingEventResponse<DateMemory, SearchMasterArticlesResponse>> OnArticlesUpdated(
         PollingEventRequest<DateMemory> request)
@@ -124,6 +123,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         };
     }
 
+    [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
     [PollingEvent("On article published", "Triggered when articles are published")]
     public async Task<PollingEventResponse<DateMemory, SearchArticlesResponse>> OnPublishedArticlesCreated(
         PollingEventRequest<DateMemory> request,
