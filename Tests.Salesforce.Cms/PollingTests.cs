@@ -50,8 +50,8 @@ public class PollingTests : TestBase
         var request = new PollingEventRequest<DateMemory> { Memory = memory };
         var category = new CategoryFilterRequest 
         { 
-            GroupName = "Blackbird", 
-            CategoryName = "All" 
+            //GroupName = "Blackbird", 
+            //CategoryName = "All" 
         };
         var visibility = new VisibilityFilterRequest { IsVisibleInCsp = false };
 

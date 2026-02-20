@@ -44,90 +44,81 @@ public class ArticleTests : TestBase
     [TestMethod]
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var filter = new SearchPublishedArticlesRequest 
-        { 
+        var filter = new SearchPublishedArticlesRequest
+        {
             //GroupName = "Blackbird" 
         };
 
+        // Act
         var result = await action.ListAllPublishedArticles(filter);
 
-        foreach (var article in result.Items)
-        {
-            Console.WriteLine($"{article.ContentId} - {article.Title}");
-            Assert.IsNotNull(article);
-        }
-
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task SearchKnowledgeArticleVersions_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleIdentifier
-        {
-            ArticleId = "kA067000000E03gCAC"
-        };
+        var input = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+
+        // Act
         var result = await action.ListAllArticlesVersions(input);
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id} - {article.Title} - {article.IsLatestVersion}");
-            Assert.IsNotNull(article);
-        }
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleInfo_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleIdentifier
-        {
-            ArticleId = "kA067000000E03gCAC"   
-        };
+        var input = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+
+        // Act
         var result = await action.GetArticleInfo(input);
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleContentAsObject_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
-        var input = new LocaleIdentifier
-        {
-            Locale = "en_US"
-        };
-        var result = await action.GetArticleContent(articleInput, input);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" }; 
+        var localeInput = new LocaleIdentifier { Locale = "en_US" };
 
- 
-        Console.WriteLine($"{result.Id} - {result.Title}");
+        // Act
+        var result = await action.GetArticleContent(articleInput, localeInput);
+
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleCustomContentAsObject_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
-        var input = new LocaleIdentifier
-        {
-            Locale = "en_US"
-        };
-        var result = await action.GetArticleCustomContent(articleInput, input);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" }; 
+        var localeInput = new LocaleIdentifier { Locale = "en_US" };
 
-        foreach (var article in result.Items)
-        {
-            Console.WriteLine($"{article.Name} - {article.Type}");
-            Assert.IsNotNull(result);
-        }
-           
+        // Act
+        var result = await action.GetArticleCustomContent(articleInput, localeInput);
+
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]

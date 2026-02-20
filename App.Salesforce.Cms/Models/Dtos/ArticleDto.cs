@@ -5,7 +5,7 @@ namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class ArticleDto : IDownloadContentInput
 {
-    [Display("ID")] 
+    [Display("Article ID")]
     public string ContentId { get; set; }
 
     [Display("Title")]
@@ -75,8 +75,8 @@ public class ArticleDto : IDownloadContentInput
                 CategoryLabel = sc.CategoryLabel,
                 CategoryName = sc.CategoryName,
                 Url = sc.Url
-            }) ?? Enumerable.Empty<CategoryDto>()
-        }) ?? Enumerable.Empty<CategoryGroupDto>();
+            }) ?? []
+        }) ?? [];
 
         IsVisibleInPkb = article.IsVisibleInPkb;
         IsVisibleInCsp = article.IsVisibleInCsp;

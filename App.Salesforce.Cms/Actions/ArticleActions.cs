@@ -169,7 +169,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     }
 
     [Action("Search knowledge article versions", Description = "Search knowledge article versions")]
-    public async Task<ListAllArticlesVersionsResponse?> ListAllArticlesVersions([ActionParameter] ArticleIdentifier input)
+    public async Task<ListAllArticlesVersionsResponse> ListAllArticlesVersions([ActionParameter] ArticleIdentifier input)
     {
         var articleMetadata = await GetArticleInfo(input);
         var query =
