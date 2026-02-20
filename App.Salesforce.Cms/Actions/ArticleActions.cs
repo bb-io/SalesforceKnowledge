@@ -37,14 +37,13 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         input.Validate();
 
         var query = "SELECT FIELDS(ALL) FROM KnowledgeArticle LIMIT 200";
-        var endpoint = $"services/data/v57.0/query?q={query}";
+        var endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
 
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
         var result = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(request);
         result.Records = result.Records.Where(a => a.IsDeleted != true);
 
-        #region filters
         if (input.CreatedBefore.HasValue)
         {
             result.Records = result.Records.Where(a => a.CreatedDate < input.CreatedBefore.Value);
@@ -77,7 +76,6 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         {
             result.Records = result.Records.Where(a => input.Archived.Value == a.ArchivedDate.HasValue);
         }
-        #endregion
 
         return new(result.Records.ToList());
     }
@@ -177,7 +175,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var query =
             $"SELECT FIELDS(ALL) FROM {articleMetadata.ArticleType} WHERE KnowledgeArticleId = '{input.ArticleId}' LIMIT 200";
 
-        var endpoint = $"services/data/v57.0/query?q={query}";
+        var endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
 
         return await Client.ExecuteWithErrorHandling<ListAllArticlesVersionsResponse>(request);

@@ -11,7 +11,7 @@ public class UploadArticleRequest : IUploadContentInput
     [Display("Content")]
     public FileReference Content { get; set; }
 
-    [Display("Locale")]
+    [Display("Locale"), DataSource(typeof(LocaleDataHandler))]
     public string Locale { get; set; }
 
     [Display("Article ID"), DataSource(typeof(ArticleDataHandler))]

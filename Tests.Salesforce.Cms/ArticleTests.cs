@@ -228,16 +228,17 @@ public class ArticleTests : TestBase
     }
 
     [TestMethod]
-    public async Task GetKnowledgeSettings_IsSuccess()
+    public async Task GetKnowledgeSettings_ReturnsLanguageSettings()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+
+        // Act
         var result = await action.GetKnowledgeSettings();
 
-        foreach (var article in result.Languages)
-        {
-            Console.WriteLine($"{article.Name} - {article.Active}");
-            Assert.IsNotNull(result);
-        }
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]

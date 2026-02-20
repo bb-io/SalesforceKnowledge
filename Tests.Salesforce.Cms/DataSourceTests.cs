@@ -19,4 +19,18 @@ public class DataSourceTests : TestBase
         PrintDataHandlerResult(result);
         Assert.IsNotNull(result);
     }
+
+    [TestMethod]
+    public async Task LocaleDataHandler_ReturnsActiveLocales()
+    {
+        // Arrange
+        var handler = new LocaleDataHandler(InvocationContext);
+
+        // Act
+        var result = await handler.GetDataAsync(new(), default);
+
+        // Assert
+        PrintDataHandlerResult(result);
+        Assert.IsNotNull(result);
+    }
 }
