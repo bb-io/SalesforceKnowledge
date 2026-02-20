@@ -28,13 +28,59 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             };
         }
 
-        var articles = await GetArticles(request.Memory.LastInteractionDate);
+        string dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+        string versionQuery = $"""
+            SELECT 
+                KnowledgeArticleId 
+            FROM 
+                Knowledge__kav 
+            WHERE 
+                LastModifiedDate > {dateFilter} AND 
+                IsLatestVersion = true
+            ORDER BY LastModifiedDate DESC
+            LIMIT 200
+            """;
+
+        string versionEndpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(versionQuery)}";
+        var versionRequest = new SalesforceRequest(versionEndpoint, Method.Get, Creds);
+        var versionResponse = await Client.ExecuteWithErrorHandling<RecordWrapper<ArticleVersionDto>>(versionRequest);
+
+        var updatedMasterIds = versionResponse?.Records?
+            .Select(v => v.KnowledgeArticleId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct()
+            .ToList() ?? [];
+
+        if (updatedMasterIds.Count == 0)
+        {
+            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+            {
+                FlyBird = false,
+                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow }
+            };
+        }
+
+        string idsString = string.Join(",", updatedMasterIds.Select(id => $"'{id}'"));
+        string masterQuery = $"""
+            SELECT 
+                FIELDS(ALL) 
+            FROM 
+                KnowledgeArticle 
+            WHERE 
+                Id IN ({idsString}) AND 
+                IsDeleted = false
+            LIMIT 200
+            """;
+
+        string masterEndpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(masterQuery)}";
+        var masterRequest = new SalesforceRequest(masterEndpoint, Method.Get, Creds);
+        var masterResponse = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(masterRequest);
 
         return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
         {
-            FlyBird = articles.Count > 0,
+            FlyBird = masterResponse.Records.Any(),
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new ListAllArticlesPollingResponse(articles)
+            Result = new ListAllArticlesPollingResponse(masterResponse.Records.ToList())
         };
     }
 
@@ -52,13 +98,29 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             };
         }
 
-        var articles = await GetArticles(request.Memory.LastInteractionDate, "CreatedDate");
+        string dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+        string query =
+            $"""
+            SELECT 
+                FIELDS(ALL) 
+            FROM KnowledgeArticle 
+            WHERE 
+                CreatedDate > {dateFilter} AND 
+                IsDeleted = false 
+            ORDER BY CreatedDate DESC 
+            LIMIT 200
+            """;
+        string endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
+
+        var masterRequest = new SalesforceRequest(endpoint, Method.Get, Creds);
+        var masterResponse = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(masterRequest);
 
         return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
         {
-            FlyBird = articles.Count > 0,
+            FlyBird = masterResponse.Records.Any(),
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new ListAllArticlesPollingResponse(articles)
+            Result = new ListAllArticlesPollingResponse(masterResponse.Records.ToList())
         };
     }
 
@@ -162,29 +224,6 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
             Result = new SearchArticlesResponse(records.ToList())
         };
-    }
-
-    private async Task<List<MasterArticleDto>> GetArticles(DateTime sinceDate, string dateField = "LastModifiedDate")
-    {
-        string dateFilter = sinceDate.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-        string query = 
-            $"""
-            SELECT 
-                FIELDS(ALL) 
-            FROM Knowledge__kav 
-            WHERE 
-                {dateField} > {dateFilter} AND 
-                IsDeleted = false 
-            ORDER BY {dateField} DESC 
-            LIMIT 200
-            """;
-        string endpoint = $"services/data/v57.0/query?q={Uri.EscapeDataString(query)}";
-
-        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        var response = await Client.ExecuteWithErrorHandling<ListAllArticlesPollingResponse>(request);
-
-        return response?.Records?.ToList() ?? [];
     }
 
     private async Task<Dictionary<string, KnowledgeArticleVisibilityDto>> LoadVisibilityByArticleIdAsync(

@@ -14,7 +14,7 @@ public class PollingTests : TestBase
     {
         // Arrange
         var polling = new ArticlePollingList(InvocationContext);
-        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 19, 16, 0, 0, DateTimeKind.Utc) };
+        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 20, 9, 54, 0, DateTimeKind.Utc) };
         var request = new PollingEventRequest<DateMemory> { Memory = memory };
 
         // Act
@@ -30,7 +30,7 @@ public class PollingTests : TestBase
     {
         // Arrange
         var polling = new ArticlePollingList(InvocationContext);
-        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 19, 16, 0, 0, DateTimeKind.Utc) };
+        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 20, 9, 0, 0, DateTimeKind.Utc) };
         var request = new PollingEventRequest<DateMemory> { Memory = memory };
 
         // Act
