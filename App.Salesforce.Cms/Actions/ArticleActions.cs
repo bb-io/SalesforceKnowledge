@@ -31,7 +31,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     : SalesforceInvocable(invocationContext)
 {
     [BlueprintActionDefinition(BlueprintAction.SearchContent)]
-    [Action("Search master knowledge articles", Description = "Search all master knowledge articles")]
+    [Action("Search master knowledge articles", Description = "Search master knowledge articles")]
     public async Task<SearchMasterArticlesResponse> ListAllArticles([ActionParameter] SearchMasterArticlesRequest input)
     {
         input.Validate();
@@ -80,7 +80,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return new(result.Records.ToList());
     }
 
-    [Action("Search all published articles translations", Description = "Search all published articles translations")]
+    [Action("Search published articles translations", Description = "Search published articles translations")]
     public async Task<SearchArticlesResponse> ListPublishedArticlesTranslations(
         [ActionParameter] LocaleIdentifier locale, 
         [ActionParameter] CategoryFilterRequest category)
@@ -115,7 +115,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return new(articlesResult.ToList());
     }
 
-    [Action("Search published articles", Description = "Search all published articles")]
+    [Action("Search published articles", Description = "Search published articles")]
     public async Task<SearchArticlesResponse> ListAllPublishedArticles([ActionParameter] SearchPublishedArticlesRequest input)
     {
         input.Validate();
@@ -181,7 +181,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<ListAllArticlesVersionsResponse>(request);
     }
 
-    [Action("Get article info", Description = "Get article information by its ID")]
+    [Action("Get article info", Description = "Get article information")]
     public async Task<ArticleInfoDto> GetArticleInfo([ActionParameter] ArticleIdentifier input)
     {
         var endpoint = $"services/data/v57.0/knowledgeManagement/articles/{input.ArticleId}";
@@ -190,7 +190,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<ArticleInfoDto>(request);
     }
 
-    [Action("Get all article content as object", Description = "Get all article content as object by id")]
+    [Action("Get all article content", Description = "Get all article content")]
     public async Task<ArticleContentDto> GetArticleContent(
         [ActionParameter] ArticleIdentifier articleInput,
         [ActionParameter] LocaleIdentifier input)
@@ -202,7 +202,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<ArticleContentDto>(request);
     }
 
-    [Action("Get article custom content as object", Description = "Get article custom content only as object by id")]
+    [Action("Get article custom content", Description = "Get article custom content")]
     public async Task<GetArticleCustomContent> GetArticleCustomContent(
         [ActionParameter] ArticleIdentifier articleInput,
         [ActionParameter] LocaleIdentifier input)
@@ -214,7 +214,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
     }
 
     [BlueprintActionDefinition(BlueprintAction.DownloadContent)]
-    [Action("Download article", Description = "Download article content as HTML file")]
+    [Action("Download article", Description = "Download article content")]
     public async Task<DownloadArticleResponse> GetArticleContentAsHtml(
         [ActionParameter] DownloadArticleRequest input,
         [ActionParameter] LocaleIdentifier locale)

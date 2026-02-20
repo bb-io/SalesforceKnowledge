@@ -15,7 +15,7 @@ namespace Apps.Salesforce.Cms.Polling;
 public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
     [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
-    [PollingEvent("On articles created or updated", "Search for created and updated articles")]
+    [PollingEvent("On articles created or updated", "Triggered when articles are created or updated")]
     public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesUpdated(
         PollingEventRequest<DateMemory> request)
     {
@@ -84,7 +84,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         };
     }
 
-    [PollingEvent("On articles created", "Search for new created articles")]
+    [PollingEvent("On articles created", "Triggered when articles are created")]
     public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesCreated(
         PollingEventRequest<DateMemory> request)
     {
@@ -124,18 +124,12 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         };
     }
 
-    [PollingEvent("On published articles last published", "Search for published articles")]
+    [PollingEvent("On article published", "Triggered when articles are published")]
     public async Task<PollingEventResponse<DateMemory, SearchArticlesResponse>> OnPublishedArticlesCreated(
         PollingEventRequest<DateMemory> request,
         [PollingEventParameter] CategoryFilterRequest category,
         [PollingEventParameter] VisibilityFilterRequest visibility)
     {
-        var langEndpoint = "/services/data/v57.0/knowledgeManagement/settings";
-        var lang = new SalesforceRequest(langEndpoint, Method.Get, Creds);
-
-        var languageDetails =await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(lang)!;
-        var locale = languageDetails.DefaultLanguage;
-
         if (request.Memory == null)
         {
             return new PollingEventResponse<DateMemory, SearchArticlesResponse>
@@ -146,22 +140,33 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             };
         }
 
-        var dateFilter = request.Memory.LastInteractionDate.ToString("yyyy-MM-dd'T'HH:mm:ss.fffZ");
-        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
+        var langEndpoint = "/services/data/v57.0/knowledgeManagement/settings";
+        var langRequest = new SalesforceRequest(langEndpoint, Method.Get, Creds);
+        var languageDetails = await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(langRequest);
+        var locale = languageDetails?.DefaultLanguage ?? "en_US";
+
+        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100&sort=LastPublishedDate";
         var sfRequest = new SalesforceRequest(endpoint, Method.Get, Creds);
         sfRequest.AddLocaleHeader(locale);
 
         var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(sfRequest);
-        IEnumerable<PublishedArticleDto> filtered = publishedArticles?.Articles?
-        .Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate)
-        ?? Enumerable.Empty<PublishedArticleDto>();
+        var filtered = publishedArticles?.Articles?.Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate) ?? [];
+        var recentArticles = filtered.ToList();
 
-        var idsForVisibility = filtered.Select(a => a.Id).ToArray();
-        var visMap = await LoadVisibilityByArticleIdAsync(idsForVisibility, locale);
-
-        filtered = filtered.Select(a =>
+        if (recentArticles.Count == 0)
         {
-            if (a is null) return a;
+            return new PollingEventResponse<DateMemory, SearchArticlesResponse>
+            {
+                FlyBird = false,
+                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+                Result = new SearchArticlesResponse([])
+            };
+        }
+
+        var idsForVisibility = recentArticles.Select(a => a.Id).ToArray();
+        var visMap = await LoadVisibilityByArticleIdAsync(idsForVisibility, locale);
+        var visibilityFiltered = recentArticles.Select(a =>
+        {
             if (visMap.TryGetValue(a.Id, out var v))
             {
                 a.IsVisibleInPkb = v.IsVisibleInPkb;
@@ -171,58 +176,50 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         });
 
         if (visibility?.IsVisibleInPkb is bool wantPkb)
-            filtered = filtered.Where(a => (a.IsVisibleInPkb ?? false) == wantPkb);
+            visibilityFiltered = visibilityFiltered.Where(a => (a.IsVisibleInPkb ?? false) == wantPkb);
 
         if (visibility?.IsVisibleInCsp is bool wantCsp)
-            filtered = filtered.Where(a => (a.IsVisibleInCsp ?? false) == wantCsp);
+            visibilityFiltered = visibilityFiltered.Where(a => (a.IsVisibleInCsp ?? false) == wantCsp);
 
         if (!string.IsNullOrEmpty(category?.CategoryName))
         {
-            filtered = filtered.Where(a =>
-                a.CategoryGroups != null &&
-                a.CategoryGroups.Any(cg =>
-                    cg.SelectedCategories != null &&
-                    cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName)));
+            visibilityFiltered = visibilityFiltered.Where(a =>
+                a.CategoryGroups?.Any(cg => 
+                    cg.SelectedCategories?.Any(sc => sc.CategoryName == category.CategoryName) == true) == true);
         }
+
         if (!string.IsNullOrEmpty(category?.GroupName))
         {
-            filtered = filtered.Where(a =>
-                a.CategoryGroups != null &&
-                a.CategoryGroups.Any(cg => cg.GroupName == category.GroupName));
+            visibilityFiltered = visibilityFiltered.Where(a => 
+                a.CategoryGroups?.Any(cg => cg.GroupName == category.GroupName) == true);
         }
 
         if (category?.ExcludedDataCategories?.Any() == true)
         {
             var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
-
-            filtered = filtered.Where(a =>
+            visibilityFiltered = visibilityFiltered.Where(a =>
                 a.CategoryGroups == null || !a.CategoryGroups.Any(cg =>
-                    cg.SelectedCategories != null &&
-                    cg.SelectedCategories.Any(sc =>
-                        !string.IsNullOrEmpty(sc.CategoryName) &&
-                        excludedSet.Contains(sc.CategoryName))));
+                    cg.SelectedCategories?.Any(
+                        sc => !string.IsNullOrEmpty(sc.CategoryName) && excludedSet.Contains(sc.CategoryName)) == true));
         }
 
         if (category?.ExcludedGroupNames?.Any() == true)
         {
             var excludedGroups = new HashSet<string>(category.ExcludedGroupNames, StringComparer.OrdinalIgnoreCase);
-
-            filtered = filtered.Where(a =>
-                a.CategoryGroups == null ||
-                !a.CategoryGroups.Any(cg =>
-                    !string.IsNullOrEmpty(cg.GroupName) &&
-                    excludedGroups.Contains(cg.GroupName)));
+            visibilityFiltered = visibilityFiltered.Where(a =>
+                a.CategoryGroups == null || !a.CategoryGroups.Any(cg =>
+                    !string.IsNullOrEmpty(cg.GroupName) && excludedGroups.Contains(cg.GroupName)));
         }
 
-        var records = filtered
-         .Select(a => new ArticleDto(a, locale))
-         .ToArray();
+        var records = visibilityFiltered
+            .Select(a => new ArticleDto(a, locale))
+            .ToList();
 
         return new PollingEventResponse<DateMemory, SearchArticlesResponse>
         {
-            FlyBird = records.Length > 0,
+            FlyBird = records.Count != 0,
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new SearchArticlesResponse(records.ToList())
+            Result = new SearchArticlesResponse(records)
         };
     }
 
@@ -231,7 +228,8 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         string locale)
     {
         var ids = articleIds.Distinct().ToArray();
-        if (ids.Length == 0) return new();
+        if (ids.Length == 0) 
+            return [];
 
         string q1 =
             $"SELECT KnowledgeArticleId, Id, IsVisibleInPkb, IsVisibleInCsp " +
@@ -244,8 +242,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         req.AddLocaleHeader(locale);
 
         var r1 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req);
-        var map = r1?.Records?.ToDictionary(x => x.KnowledgeArticleId, x => x)
-                  ?? new Dictionary<string, KnowledgeArticleVisibilityDto>();
+        var map = r1?.Records?.ToDictionary(x => x.KnowledgeArticleId, x => x) ?? [];
 
         if (map.Count == 0)
         {
@@ -260,10 +257,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             req2.AddLocaleHeader(locale);
 
             var r2 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req2);
-            map = r2?.Records?
-                .GroupBy(x => x.KnowledgeArticleId)
-                .ToDictionary(g => g.Key, g => g.First())
-                ?? new Dictionary<string, KnowledgeArticleVisibilityDto>();
+            map = r2?.Records?.GroupBy(x => x.KnowledgeArticleId).ToDictionary(g => g.Key, g => g.First()) ?? [];
         }
 
         return map;
