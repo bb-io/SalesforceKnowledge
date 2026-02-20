@@ -16,12 +16,12 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
 {
     [BlueprintEventDefinition(BlueprintEvent.ContentCreatedOrUpdatedMultiple)]
     [PollingEvent("On articles created or updated", "Triggered when articles are created or updated")]
-    public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesUpdated(
+    public async Task<PollingEventResponse<DateMemory, SearchMasterArticlesResponse>> OnArticlesUpdated(
         PollingEventRequest<DateMemory> request)
     {
         if (request.Memory == null)
         {
-            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+            return new PollingEventResponse<DateMemory, SearchMasterArticlesResponse>
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow }
@@ -53,7 +53,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
 
         if (updatedMasterIds.Count == 0)
         {
-            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+            return new PollingEventResponse<DateMemory, SearchMasterArticlesResponse>
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow }
@@ -76,25 +76,25 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         var masterRequest = new SalesforceRequest(masterEndpoint, Method.Get, Creds);
         var masterResponse = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(masterRequest);
 
-        return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+        return new PollingEventResponse<DateMemory, SearchMasterArticlesResponse>
         {
             FlyBird = masterResponse.Records.Any(),
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new ListAllArticlesPollingResponse(masterResponse.Records.ToList())
+            Result = new SearchMasterArticlesResponse(masterResponse.Records.ToList())
         };
     }
 
     [PollingEvent("On articles created", "Triggered when articles are created")]
-    public async Task<PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>> OnArticlesCreated(
+    public async Task<PollingEventResponse<DateMemory, SearchMasterArticlesResponse>> OnArticlesCreated(
         PollingEventRequest<DateMemory> request)
     {
         if (request.Memory == null)
         {
-            return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+            return new PollingEventResponse<DateMemory, SearchMasterArticlesResponse>
             {
                 FlyBird = false,
                 Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-                Result = new ListAllArticlesPollingResponse([])
+                Result = new SearchMasterArticlesResponse([])
             };
         }
 
@@ -116,11 +116,11 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         var masterRequest = new SalesforceRequest(endpoint, Method.Get, Creds);
         var masterResponse = await Client.ExecuteWithErrorHandling<RecordWrapper<MasterArticleDto>>(masterRequest);
 
-        return new PollingEventResponse<DateMemory, ListAllArticlesPollingResponse>
+        return new PollingEventResponse<DateMemory, SearchMasterArticlesResponse>
         {
             FlyBird = masterResponse.Records.Any(),
             Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
-            Result = new ListAllArticlesPollingResponse(masterResponse.Records.ToList())
+            Result = new SearchMasterArticlesResponse(masterResponse.Records.ToList())
         };
     }
 
