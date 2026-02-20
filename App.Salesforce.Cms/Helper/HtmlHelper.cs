@@ -25,10 +25,10 @@ public static class HtmlHelper
             containerDiv.SetAttributeValue("data-fieldName", field.Key);
 
             var labelHeader = doc.CreateElement("h3");
-            labelHeader.InnerHtml = field.Value.Label;
+            labelHeader.InnerHtml = field.Value.Label ?? string.Empty;
 
             var contentDiv = doc.CreateElement("div");
-            contentDiv.InnerHtml = field.Value.Value;
+            contentDiv.InnerHtml = field.Value.Value ?? string.Empty;
 
             containerDiv.AppendChild(labelHeader);
             containerDiv.AppendChild(contentDiv);
