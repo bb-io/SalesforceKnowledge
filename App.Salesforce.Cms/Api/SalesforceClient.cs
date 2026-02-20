@@ -5,6 +5,7 @@ using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using Blackbird.Applications.Sdk.Utils.RestSharp;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 
 namespace Apps.Salesforce.Cms.Api;
@@ -47,7 +48,7 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
 
     protected override Exception ConfigureErrorException(RestResponse response)
     {
-        var content = response.Content;
+        string? content = response.Content;
         if (string.IsNullOrEmpty(content))
         {
             return new PluginApplicationException(
@@ -55,26 +56,55 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
             );
         }
 
-        if (content.TrimStart().StartsWith('['))
+        try
         {
-            var errors = JsonConvert.DeserializeObject<List<ErrorResponse>>(content);
-            if (errors != null && errors.Count != 0)
+            var jsonToken = JToken.Parse(content);
+            var extractedMessages = new List<string>();
+
+            if (jsonToken is JArray arrayToken && arrayToken.Count > 0)
             {
-                var errorMessages = errors.SelectMany(x => x.Errors);
-                string msg = string.Join("; ", errorMessages.Select(x => x.Message));
-                return new PluginApplicationException($"Status code: {response.StatusCode}. {msg}");
+                var firstItem = arrayToken.First as JObject;
+
+                if (firstItem != null && firstItem.ContainsKey("errors"))
+                {
+                    var actionErrors = arrayToken.ToObject<List<ErrorResponse>>();
+                    if (actionErrors != null)
+                        extractedMessages.AddRange(actionErrors.SelectMany(x => x.Errors).Select(e => e.Message));
+                }
+                else if (firstItem != null && firstItem.ContainsKey("message"))
+                {
+                    var standardErrors = arrayToken.ToObject<List<Error>>();
+                    if (standardErrors != null)
+                        extractedMessages.AddRange(standardErrors.Select(e => e.Message));
+                }
+            }
+            else if (jsonToken is JObject objToken)
+            {
+                if (objToken.ContainsKey("errors"))
+                {
+                    var errorResponse = objToken.ToObject<ErrorResponse>();
+                    if (errorResponse?.Errors != null)
+                        extractedMessages.AddRange(errorResponse.Errors.Select(e => e.Message));
+                }
+                else if (objToken.ContainsKey("message"))
+                {
+                    var singleError = objToken.ToObject<Error>();
+                    if (singleError != null)
+                        extractedMessages.Add(singleError.Message);
+                }
+            }
+
+            if (extractedMessages.Count != 0)
+            {
+                string finalMessage = string.Join("; ", extractedMessages.Where(m => !string.IsNullOrWhiteSpace(m)));
+                return new PluginApplicationException($"Status code: {response.StatusCode}. {finalMessage}");
             }
         }
-        else
+        catch (JsonReaderException) 
         {
-            var errorResponse = JsonConvert.DeserializeObject<ErrorResponse>(content);
-            if (errorResponse?.Errors != null && errorResponse.Errors.Count != 0)
-            {
-                string msg = string.Join("; ", errorResponse.Errors.Select(x => x.Message));
-                return new PluginApplicationException($"Status code: {response.StatusCode}. {msg}");
-            }
+            return new PluginApplicationException($"Status code: {response.StatusCode}. Unable to parse the error");
         }
 
-        return new PluginApplicationException($"Status code: {response.StatusCode}, {content}");
+        return new PluginApplicationException($"Status code: {response.StatusCode}. Raw error: {content}");
     }
 }
