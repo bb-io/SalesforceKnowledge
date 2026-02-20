@@ -33,4 +33,18 @@ public class DataSourceTests : TestBase
         PrintDataHandlerResult(result);
         Assert.IsNotNull(result);
     }
+
+    [TestMethod]
+    public async Task UserDataHandler_ReturnsUsers()
+    {
+        // Arrange
+        var handler = new UserDataHandler(InvocationContext);
+
+        // Act
+        var result = await handler.GetDataAsync(new(), default);
+
+        // Assert
+        PrintDataHandlerResult(result);
+        Assert.IsNotNull(result);
+    }
 }
