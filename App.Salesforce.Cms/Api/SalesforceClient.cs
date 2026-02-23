@@ -55,6 +55,8 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
                 $"Status code: {response.StatusCode}, but no content or error message provided."
             );
         }
+        if (response.ContentType == "text/html")
+            return new PluginApplicationException($"Status code: {response.StatusCode}. HTML Error: {content}");
 
         try
         {

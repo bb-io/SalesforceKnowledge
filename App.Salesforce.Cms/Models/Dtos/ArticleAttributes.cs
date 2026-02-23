@@ -7,6 +7,6 @@ public class ArticleAttributes
     [Display("Article type")]
     public string Type { get; set; } = string.Empty;
 
-    [Display("URL")]
+    [Display("Article URL")]
     public string Url { get; set; } = string.Empty;
 }

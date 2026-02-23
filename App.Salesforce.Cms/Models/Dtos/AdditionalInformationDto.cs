@@ -4,7 +4,7 @@ namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class AdditionalInformationDto
 {
-    [Display("Can Archive")]
+    [Display("Can archive")]
     public bool CanArchive { get; set; }
 
     [Display("Can delete")]
