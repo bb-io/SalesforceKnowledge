@@ -1,95 +1,65 @@
-﻿using Apps.Salesforce.Cms.Models.Requests;
+﻿using Salesforce.CmsTests.Base;
 using Apps.Salesforce.Cms.Polling;
 using Apps.Salesforce.Cms.Polling.Models;
+using Apps.Salesforce.Cms.Models.Requests;
 using Blackbird.Applications.Sdk.Common.Polling;
-using Salesforce.CmsTests.Base;
 
 namespace Tests.Salesforce.Cms;
 
 [TestClass]
-public class PollingTests:TestBase
+public class PollingTests : TestBase
 {
     [TestMethod]
-    public async Task OnArticleCreated_IsSuccessful()
+    public async Task OnArticlesCreatedOrUpdated_IsSuccessful()
     {
+        // Arrange
         var polling = new ArticlePollingList(InvocationContext);
+        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 20, 9, 54, 0, DateTimeKind.Utc) };
+        var request = new PollingEventRequest<DateMemory> { Memory = memory };
 
-        var initialMemory = new DateMemory
-        {
-            LastInteractionDate = DateTime.Parse("2024-08-04T15:30:08.0000000Z")
-        };
-
-        var request = new PollingEventRequest<DateMemory>
-        {
-            Memory = initialMemory
-        };
-
-        var result = await polling.OnArticlesCreated(request);
-        var articles = result.Result.Records;
-
-        foreach (var article in articles)
-        {
-            Console.WriteLine($"ID: {article.Id}, CreatedDate: {article.CreatedDate}");
-        }
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
-
-        Assert.IsNotNull(result);
-    }
-
-    [TestMethod]
-    public async Task OnPublishedArticleCreated_IsSuccessful()
-    {
-        var polling = new ArticlePollingList(InvocationContext);
-
-        var initialMemory = new DateMemory
-        {
-            LastInteractionDate = DateTime.Parse("2024-08-06T15:30:08.0000000Z")
-        };
-
-        var request = new PollingEventRequest<DateMemory>
-        {
-            Memory = initialMemory
-        };
-
-        var result = await polling.OnPublishedArticlesCreated(request, new CategoryFilterRequest { GroupName = "Blackbird",CategoryName="All" },
-            new VisibilityFilterRequest { IsVisibleInCsp=false});
-        var articles = result.Result.Records;
-
-        foreach (var article in articles)
-        {
-            Console.WriteLine($"ID: {article.Id}, LastPublishedDate: {article.LastPublishedDate}");
-        }
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
-
-        Assert.IsNotNull(result);
-    }
-
-    [TestMethod]
-    public async Task OnArticleUpdated_IsSuccessful()
-    {
-        var polling = new ArticlePollingList(InvocationContext);
-
-        var initialMemory = new DateMemory
-        {
-            LastInteractionDate = DateTime.Parse("2023-07-18T15:30:08.0000000Z")
-        };
-
-        var request = new PollingEventRequest<DateMemory>
-        {
-            Memory = initialMemory
-        };
-
+        // Act
         var result = await polling.OnArticlesUpdated(request);
 
-        var articles = result.Result.Records;
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
+    }
 
-        foreach (var article in articles)
-        {
-            Console.WriteLine($"ID: {article.Id}, UpdatedDate: {article.LastModifiedDate}");
-        }
+    [TestMethod]
+    public async Task OnArticlesCreated_IsSuccessful()
+    {
+        // Arrange
+        var polling = new ArticlePollingList(InvocationContext);
+        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 20, 9, 0, 0, DateTimeKind.Utc) };
+        var request = new PollingEventRequest<DateMemory> { Memory = memory };
 
+        // Act
+        var result = await polling.OnArticlesCreated(request);
+
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
+    }
+
+    [TestMethod]
+    public async Task OnPublishedArticlesCreated_IsSuccessful()
+    {
+        // Arrange
+        var polling = new ArticlePollingList(InvocationContext);
+        var memory = new DateMemory { LastInteractionDate = new DateTime(2026, 02, 19, 10, 0, 0, DateTimeKind.Utc) };
+        var request = new PollingEventRequest<DateMemory> { Memory = memory };
+        var category = new CategoryFilterRequest 
+        { 
+            //GroupName = "Blackbird", 
+            //CategoryName = "All" 
+        };
+        var visibility = new VisibilityFilterRequest { IsVisibleInCsp = false };
+
+        // Act
+        var result = await polling.OnPublishedArticlesCreated(request, category, visibility);
+
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 }

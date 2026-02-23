@@ -1,5 +1,5 @@
 ﻿using App.Salesforce.Cms.Constants;
-using App.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Utility.Error;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
@@ -97,7 +97,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
                 var bodyParamsLog = string.Join(", ", bodyParameters.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
                 var errorMessage = $"[SalesforceKnowledge] Token request failed. Status: {response.StatusCode}";
                 
-                var errorResponse = JsonConvert.DeserializeObject<SalesforceErrorDto>(responseContent);
+                var errorResponse = JsonConvert.DeserializeObject<AuthError>(responseContent);
                 if (errorResponse?.Error != null)
                 {
                     errorMessage += $", API Error: {errorResponse.Error} - {errorResponse.ErrorDescription}";

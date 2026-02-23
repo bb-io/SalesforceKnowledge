@@ -39,26 +39,29 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 ### Articles
 
 - **Search master knowledge articles** Search master knowledge articles
-- **Search all published articles' translations** Search all published articles translations
+- **Search published articles' translations** Search published articles translations
 - **Search published articles** Search published articles
 - **Search knowledge article versions** Search knowledge article versions
-- **Get article info** Get article info by id
+- **Get article info** Get article information
+- **Get all article content** Get all article content
+- **Get article custom content** Get article custom content
+- **Download article** Download article content
+- **Get article ID from a file** Get article ID from file metadata
+- **Upload article** Upload article from a file
 - **Get articles not translated in language** Get articles not translated in specific language
-- **Get all article content as object** Get all article content as object by id
-- **Get article custom content as object** Get article custom content only as object by id
-- **Get article content as HTML file** Get article content as HTML file by id
-- **Translate knowledge article from HTML file** Translate knowledge article from HTML file
 - **Submit knowledge article to translation** Submit knowledge article to translation
 - **Publish knowledge article draft** Publish knowledge article draft
 - **Create draft for knowledge article** Create draft for knowledge article
 - **Update knowledge article field** Update knowledge article field
 - **Get knowledge language settings** Get knowledge language settings
-- **Get article ID from HTML file** Get article ID from the HTML file metadata
 
-### Events
+## Events
 
-- **On articles creted** Polling event, that periodically checks for new articles created in Salesforce.
-- **On articles updated** Polling event, that periodically checks for updated articles in Salesforce.
+### Articles
+
+- **On articles created or updated** Triggered when articles are created or updated
+- **On articles created** Triggered when articles are created
+- **On article published** Triggered when articles are published
 
 ## Feedback
 

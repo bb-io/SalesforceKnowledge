@@ -1,10 +1,10 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class AdditionalInformationDto
 {
-    [Display("Can Aarchive")]
+    [Display("Can archive")]
     public bool CanArchive { get; set; }
 
     [Display("Can delete")]

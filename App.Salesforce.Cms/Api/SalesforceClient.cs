@@ -1,13 +1,14 @@
 ﻿using App.Salesforce.Cms.Constants;
-using Apps.Salesforce.Cms.Models.Dtos;
+using Apps.Salesforce.Cms.Models.Utility.Error;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using Blackbird.Applications.Sdk.Utils.RestSharp;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 
-namespace App.Salesforce.Cms.Api;
+namespace Apps.Salesforce.Cms.Api;
 
 public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> creds) : BlackBirdRestClient(
     new RestClientOptions
@@ -47,22 +48,65 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
 
     protected override Exception ConfigureErrorException(RestResponse response)
     {
-        if (string.IsNullOrEmpty(response.Content))
+        string? content = response.Content;
+        if (string.IsNullOrEmpty(content))
         {
-            if (string.IsNullOrEmpty(response.ErrorMessage))
+            return new PluginApplicationException(
+                $"Status code: {response.StatusCode}, but no content or error message provided."
+            );
+        }
+        if (response.ContentType == "text/html")
+            return new PluginApplicationException($"Status code: {response.StatusCode}. HTML Error: {content}");
+
+        try
+        {
+            var jsonToken = JToken.Parse(content);
+            var extractedMessages = new List<string>();
+
+            if (jsonToken is JArray arrayToken && arrayToken.Count > 0)
             {
-                return new PluginApplicationException($"Status code: {response.StatusCode}, but no content or error message provided.");
+                var firstItem = arrayToken.First as JObject;
+
+                if (firstItem != null && firstItem.ContainsKey("errors"))
+                {
+                    var actionErrors = arrayToken.ToObject<List<ErrorResponse>>();
+                    if (actionErrors != null)
+                        extractedMessages.AddRange(actionErrors.SelectMany(x => x.Errors).Select(e => e.Message));
+                }
+                else if (firstItem != null && firstItem.ContainsKey("message"))
+                {
+                    var standardErrors = arrayToken.ToObject<List<Error>>();
+                    if (standardErrors != null)
+                        extractedMessages.AddRange(standardErrors.Select(e => e.Message));
+                }
+            }
+            else if (jsonToken is JObject objToken)
+            {
+                if (objToken.ContainsKey("errors"))
+                {
+                    var errorResponse = objToken.ToObject<ErrorResponse>();
+                    if (errorResponse?.Errors != null)
+                        extractedMessages.AddRange(errorResponse.Errors.Select(e => e.Message));
+                }
+                else if (objToken.ContainsKey("message"))
+                {
+                    var singleError = objToken.ToObject<Error>();
+                    if (singleError != null)
+                        extractedMessages.Add(singleError.Message);
+                }
             }
 
-            return new PluginApplicationException(response.ErrorMessage);
+            if (extractedMessages.Count != 0)
+            {
+                string finalMessage = string.Join("; ", extractedMessages.Where(m => !string.IsNullOrWhiteSpace(m)));
+                return new PluginApplicationException($"Status code: {response.StatusCode}. {finalMessage}");
+            }
         }
-
-        var errorDto = JsonConvert.DeserializeObject<List<ErrorDto>>(response.Content!);
-        if (errorDto == null || errorDto.Count == 0)
+        catch (JsonReaderException) 
         {
-            return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
+            return new PluginApplicationException($"Status code: {response.StatusCode}. Unable to parse the error");
         }
 
-        return new PluginApplicationException($"Status code: {response.StatusCode}, {response.Content}");
+        return new PluginApplicationException($"Status code: {response.StatusCode}. Raw error: {content}");
     }
 }

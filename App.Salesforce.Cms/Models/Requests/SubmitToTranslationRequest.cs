@@ -1,11 +1,13 @@
-﻿using Blackbird.Applications.Sdk.Common;
+﻿using Apps.Salesforce.Cms.Handlers;
+using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.Sdk.Common.Dynamic;
 
-namespace App.Salesforce.Cms.Models.Requests;
+namespace Apps.Salesforce.Cms.Models.Requests;
 
-public class SubmitToTranslationRequest : ArticleRequest
+public class SubmitToTranslationRequest
 {
-    public string Locale { get; set; }
-    [Display("Assignee ID")] public string AssigneeId { get; set; }
+    [Display("Assignee ID"), DataSource(typeof(UserDataHandler))] 
+    public string AssigneeId { get; set; }
     
     [Display("Due date")]
     public DateTime? DueDate { get; set; }

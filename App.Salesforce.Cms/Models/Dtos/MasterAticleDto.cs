@@ -1,14 +1,14 @@
-﻿using App.Salesforce.Cms.Models.Dtos;
-using Blackbird.Applications.Sdk.Common;
-using System.Text.Json.Serialization;
+﻿using Blackbird.Applications.Sdk.Common;
+using Blackbird.Applications.SDK.Blueprints.Interfaces.CMS;
+using Newtonsoft.Json;
 
 namespace Apps.Salesforce.Cms.Models.Dtos;
 
-public class MasterArticleDto
+public class MasterArticleDto : IDownloadContentInput
 {
-
     [Display("Article ID")]
-    public string Id { get; set; } = string.Empty;
+    [JsonProperty("Id")]
+    public string ContentId { get; set; } = string.Empty;
 
     [Display("Master language")]
     public string MasterLanguage { get; set; } = string.Empty;
@@ -54,13 +54,4 @@ public class MasterArticleDto
 
     [DefinitionIgnore]
     public bool IsDeleted { get; set; }
-}
-
-public class ArticleAttributes
-{
-    [Display("Article type")]
-    public string Type { get; set; } = string.Empty;
-
-    [Display("URL")]
-    public string Url { get; set; } = string.Empty;
 }

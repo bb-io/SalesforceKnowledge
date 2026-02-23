@@ -1,8 +1,9 @@
-﻿using App.Salesforce.Cms.Actions;
-using App.Salesforce.Cms.Models.Requests;
+﻿using Salesforce.CmsTests.Base;
+using App.Salesforce.Cms.Actions;
 using Apps.Salesforce.Cms.Models.Requests;
+using Apps.Salesforce.Cms.Models.Identifiers;
 using Blackbird.Applications.Sdk.Common.Files;
-using Salesforce.CmsTests.Base;
+using Newtonsoft.Json;
 
 namespace Tests.Salesforce.Cms;
 
@@ -10,253 +11,257 @@ namespace Tests.Salesforce.Cms;
 public class ArticleTests : TestBase
 {
     [TestMethod]
-    public async Task SearchAllMasterKnowledge_IsSuccess()
+    public async Task SearchAllMasterKnowledge_ReturnsAllArticles()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+        var input = new SearchMasterArticlesRequest { };
 
-        var result = await action.ListAllArticles(new masterArticleSearchFilters
-        {
+        // Act
+        var result = await action.ListAllArticles(input);
 
-        });
-
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id}");
-            Assert.IsNotNull(article);
-        }
-
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
-    public async Task SearchAllPublishedTranslation_IsSuccess()
+    public async Task SearchAllPublishedTranslation_ReturnsPublishedTranslations()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ListPublishedTranslationsRequest
-        {
-            Locale = "en_US"
-        };
-        var result = await action.ListPublishedArticlesTranslations(input, new CategoryFilterRequest { });
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+        var category = new CategoryFilterRequest { };
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id} - {article.Title}");
-            Assert.IsNotNull(article);
-        }
+        // Act
+        var result = await action.ListPublishedArticlesTranslations(locale, category);
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task SearchAllPublishedArticles_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var result = await action.ListAllPublishedArticles(new searchFilter { GroupName="Blackbird"  });
-
-        foreach (var article in result.Records)
+        var filter = new SearchPublishedArticlesRequest
         {
-            Console.WriteLine($"{article.Id} - {article.Title}");
-            Assert.IsNotNull(article);
-        }
+            //GroupName = "Blackbird" 
+        };
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Act
+        var result = await action.ListAllPublishedArticles(filter);
+
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task SearchKnowledgeArticleVersions_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleRequest
-        {
-            ArticleId= "kA067000000E03gCAC"
-        };
+        var input = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+
+        // Act
         var result = await action.ListAllArticlesVersions(input);
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Id} - {article.Title} - {article.IsLatestVersion}");
-            Assert.IsNotNull(article);
-        }
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleInfo_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ArticleRequest
-        {
-            ArticleId = "kA067000000E03gCAC"   
-        };
+        var input = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+
+        // Act
         var result = await action.GetArticleInfo(input);
 
-        var json = Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented);
-        Console.WriteLine(json);
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleContentAsObject_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
-        {
-            ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US"
-        };
-        var result = await action.GetArticleContent(input);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" }; 
+        var localeInput = new LocaleIdentifier { Locale = "en_US" };
 
- 
-        Console.WriteLine($"{result.Id} - {result.Title}");
+        // Act
+        var result = await action.GetArticleContent(articleInput, localeInput);
+
+        // Assert
+        PrintJsonResult(result);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleCustomContentAsObject_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
-        {
-            ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US"
-        };
-        var result = await action.GetArticleCustomContent(input);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" }; 
+        var localeInput = new LocaleIdentifier { Locale = "en_US" };
 
-        foreach (var article in result.Items)
-        {
-            Console.WriteLine($"{article.Name} - {article.Type}");
-            Assert.IsNotNull(result);
-        }
-           
+        // Act
+        var result = await action.GetArticleCustomContent(articleInput, localeInput);
+
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task GetArticleContentAsHtml_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetArticleContentRequest
+        var input = new DownloadArticleRequest
         {
-            ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US"
+            ContentId = "kA0J5000000g47hKAA",
         };
-        var result = await action.GetArticleContentAsHtml(input, null);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
+        // Act
+        var result = await action.GetArticleContentAsHtml(input, locale);
+
+        // Assert
+        Console.WriteLine(result.Content.Name);
         Assert.IsNotNull(result);
     }
 
     [TestMethod]
-    public async Task GetArticlesNotTranslated_IsSuccess()
+    public async Task GetArticlesNotTranslated_ReturnsNonTranslatedArticles()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new ListPublishedTranslationsRequest
-        {
-            Locale = "en_US"
-        };
-        var result = await action.GetArticlesNotTranslated(input);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
-        foreach (var article in result.Records)
-        {
-            Console.WriteLine($"{article.Title} - {article.Id}");
-            Assert.IsNotNull(result);
-        }
+        // Act
+        var result = await action.GetArticlesNotTranslated(locale);
+
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task TranslateFromHtml_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new TranslateFromHtmlRequest
+        var input = new UploadArticleRequest
         {
-            ArticleId = "kA067000000E03gCAC",
-            //ArticleId = "kA0J5000000g3RqKAI",
+            //ContentId = "kA0J5000000g47hKAA",
             Locale = "nl_NL",
-            File = new FileReference
-            {
-                Name = "test.html"
-            }
+            Content = new FileReference { Name = "test blueprints.html" },
+            Publish = true,
         };
-        await action.TranslateFromHtml(input, true);
 
-        Assert.IsTrue(true);
+        // Act
+        await action.TranslateFromHtml(input);
     }
-
 
     [TestMethod]
     public async Task SubmitKnowledgeArticleToTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+        var article = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
+        var locale = new LocaleIdentifier { Locale = "en_US" }; 
         var input = new SubmitToTranslationRequest
         {
-            ArticleId = "kA067000000E03gCAC",
-            Locale = "en_US",
             AssigneeId = "0056700000Dd6t7AAB",
         };
 
-        var result =  action.SubmitToTranslation(input);
-
-        Assert.IsTrue(true);       
+        // Act
+        await action.SubmitToTranslation(article, input, locale); 
     }
 
     [TestMethod]
     public async Task PublishKnowledgeTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new PublishKnowledgeTranslationRequest
-        {
-            ArticleId = "ka0J5000000fy2ZIAQ",
-            Locale = "en_US",
-        };
+        var article = new ArticleIdentifier { ArticleId = "ka0J5000000fy2ZIAQ" };
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+        var input = new PublishKnowledgeTranslationRequest { };
 
-        var result = action.PublishKnowledgeTranslation(input);
-
-        Assert.IsTrue(true);
+        // Act
+        await action.PublishKnowledgeTranslation(article, input, locale);
     }
 
     [TestMethod]
     public async Task CreateDraftKnowledgeTranslation_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new CreateArticleDraftRequest
-        {
-            ArticleId = "ka067000000EMXVAA4",
-            Locale = "en_US",
-        };
+        var articleInput = new ArticleIdentifier { ArticleId = "ka067000000EMXVAA4" };
+        var input = new CreateArticleDraftRequest { };
+        var locale = new LocaleIdentifier { Locale = "en_US" };
 
-        var result = action.CreatedArticleDraft(input);
+        // Act
+        var result = await action.CreatedArticleDraft(articleInput, input, locale);
 
-        Assert.IsTrue(true);
+        // Assert
+        Console.WriteLine(JsonConvert.SerializeObject(result, Formatting.Indented));
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
-    public async Task GetKnowledgeSettings_IsSuccess()
+    public async Task GetKnowledgeSettings_ReturnsLanguageSettings()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+
+        // Act
         var result = await action.GetKnowledgeSettings();
 
-        foreach (var article in result.Languages)
-        {
-            Console.WriteLine($"{article.Name} - {article.Active}");
-            Assert.IsNotNull(result);
-        }
+        // Assert
+        PrintJsonResult(result);
+        Assert.IsNotNull(result);
     }
 
     [TestMethod]
     public async Task UpdateKnowledgeArticleField_IsSuccess()
     {
+        // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
+        var articleInput = new ArticleIdentifier { ArticleId = "kA067000000E03gCAC" };
         var input = new UpdateKnowledgeArticleFieldRequest
         {
-            ArticleId = "kA067000000E03gCAC",
             FieldName = "title",
             FieldValue = "New Title 03/21",
-            Locale = "en_US"
+            Publish = true,
         };
-        var result = action.UpdateKnowledgeArticleField(input,true);
-        Assert.IsNotNull(true);
+        var locale = new LocaleIdentifier { Locale = "en_US" };
+
+        // Act
+        await action.UpdateKnowledgeArticleField(articleInput, input, locale);
+    }
+
+    [TestMethod]
+    public async Task GetArticleIdFromHtmlFile_IsSuccess()
+    {
+        // Arrange
+        var action = new ArticleActions(InvocationContext, FileManager);
+        var input = new GetIdFromFileRequest { File = new FileReference { Name = "my art.html" } };
+
+        // Act
+        var result = await action.GetArticleIdFromHtmlFile(input);
+
+        // Assert
+        Console.WriteLine(result);
+        Assert.IsNotNull(result);
     }
 }

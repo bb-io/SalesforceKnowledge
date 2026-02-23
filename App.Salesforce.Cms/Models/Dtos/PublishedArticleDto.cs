@@ -1,20 +1,20 @@
 ﻿using Blackbird.Applications.Sdk.Common;
 
-namespace App.Salesforce.Cms.Models.Dtos;
+namespace Apps.Salesforce.Cms.Models.Dtos;
 
 public class PublishedArticleDto
 {
-    [Display("Article number")]
-    public string ArticleNumber { get; set; }
-
-    [Display("Down vote сount")]
-    public int DownVoteCount { get; set; }
-
     [Display("ID")]
     public string Id { get; set; }
 
     [Display("Title")]
     public string Title { get; set; }
+
+    [Display("Article number")]
+    public string ArticleNumber { get; set; }
+
+    [Display("Down vote сount")]
+    public int DownVoteCount { get; set; }
 
     [Display("Up vote count")]
     public int UpVoteCount { get; set; }
