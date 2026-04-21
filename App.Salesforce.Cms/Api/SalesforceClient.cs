@@ -14,7 +14,8 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
     new RestClientOptions
     {
         ThrowOnAnyError = false,
-        BaseUrl = GetUri(creds)
+        BaseUrl = GetUri(creds),
+        MaxTimeout = 600000
     })
 {
     private static Uri GetUri(IEnumerable<AuthenticationCredentialsProvider> creds)
