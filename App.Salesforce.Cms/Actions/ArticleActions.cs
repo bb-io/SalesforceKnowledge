@@ -23,6 +23,10 @@ using Newtonsoft.Json;
 using RestSharp;
 using System.Net.Mime;
 using System.Text;
+using App.Salesforce.Cms.Constants;
+using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
+using Blackbird.Filters.Constants;
+using Blackbird.Filters.Extensions;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -227,16 +231,30 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             items.RemoveAll(i => input.FieldsToExclude.Contains(i.Name));
 
         var contentFields = new Dictionary<string, CustomContentFieldDto>();
-        foreach (var item in items)
+        Dictionary<string, FieldMetadataDto> metadataMap = await GetFieldMetadata();
+        
+        foreach (var item in items.Where(item => item.Name.EndsWith("__c")))
         {
-            if (item.Name.EndsWith("__c"))  // Custom field with content
-                contentFields[item.Name] = new CustomContentFieldDto(item.Label, item.Value);
+            int? maxLength = null;
+            string? fieldId = null;
+
+            if (metadataMap.TryGetValue(item.Name, out var meta))
+            {
+                maxLength = meta.Length > 0 ? meta.Length : null;
+                fieldId = meta.Id;
+            }
+    
+            contentFields[item.Name] = new CustomContentFieldDto(item.Label, item.Value, maxLength, fieldId);
         }
-
-        var doc = HtmlHelper.GenerateHtml(contentFields);
-
-        HtmlHelper.InjectHeadMetadata(doc, locale.Locale, MetadataConstants.Locale);
-        HtmlHelper.InjectHeadMetadata(doc, input.ContentId, MetadataConstants.ArticleId);
+        
+        string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
+        string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
+        
+        var doc = HtmlHelper.GenerateHtml(contentFields, locale.Locale);
+        HtmlHelper.InjectHeadMetadata(doc, input.ContentId, MetadataConstants.ContentId);
+        HtmlHelper.InjectHeadMetadata(doc, article.Title, MetadataConstants.ContentName);
+        HtmlHelper.InjectHeadMetadata(doc, domain, MetadataConstants.SystemRef);
+        HtmlHelper.InjectHeadMetadata(doc, editUrl, MetadataConstants.AdminView);
         HtmlHelper.InjectTitle(doc, article.Title);
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(doc.DocumentNode.OuterHtml));
@@ -258,7 +276,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
         var doc = html.AsHtmlDocument();
 
-        var articleId = HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId);
+        var articleId = HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ContentId);
         if (string.IsNullOrWhiteSpace(articleId))
         {
             throw new PluginApplicationException(
@@ -272,24 +290,26 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
 
     [BlueprintActionDefinition(BlueprintAction.UploadContent)]
     [Action("Upload article", Description = "Upload article from a file")]
-    public async Task TranslateFromHtml([ActionParameter] UploadArticleRequest input)
+    public async Task<UploadArticleResponse> TranslateFromHtml([ActionParameter] UploadArticleRequest input)
     {
-        using var file = await fileManagementClient.DownloadAsync(input.Content);
+        await using var file = await fileManagementClient.DownloadAsync(input.Content);
         string html = Encoding.UTF8.GetString(await file.GetByteData());
 
+        Transformation? transformation = null;
         if (Xliff2Serializer.IsXliff2(html))
         {
-            html = Transformation.Parse(html, input.Content.Name).Target().Serialize() 
-                ?? throw new PluginMisconfigurationException("XLIFF did not contain files");
+            transformation = Transformation.Parse(html, input.Content.Name);
+            html = transformation.Target().Serialize() ?? 
+                   throw new PluginMisconfigurationException("XLIFF did not contain files");
         }
 
         var doc = html.AsHtmlDocument();
 
-        string articleId = input.ContentId 
-            ?? HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId)
-            ?? throw new PluginMisconfigurationException(
-                "Article ID is required, it needs to be present either in the input or file"
-            );
+        string articleId = input.ContentId ?? 
+                           HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ContentId) ??
+                           HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId) ?? 
+                           throw new PluginMisconfigurationException(
+                               "Article ID is required, it needs to be present either in the input or file");
 
         var fieldsToUpdate = new Dictionary<string, string>();
 
@@ -297,24 +317,47 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         if (!string.IsNullOrWhiteSpace(title))
             fieldsToUpdate["Title"] = title;
 
-        var body = doc.DocumentNode.SelectSingleNode("//body");
-        if (body != null)
+        var body = doc.DocumentNode.SelectSingleNode("//body") ?? 
+                   throw new PluginMisconfigurationException("HTML body tag was not found in the file");
+        
+        foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element))
         {
-            foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element))
-            {
-                var fieldName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
-                var divNode = nodeField.SelectSingleNode("div");
-                if (divNode != null)
-                {
-                    var text = divNode.InnerHtml;
-                    fieldsToUpdate.Add(fieldName, text);
-                }
-            }
+            var fieldName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
+            var divNode = nodeField.SelectSingleNode("div");
+            if (divNode == null) 
+                continue;
+            
+            var text = divNode.InnerHtml;
+            fieldsToUpdate.Add(fieldName, text);
         }
 
         await ErrorHandler.ExecuteWithErrorHandling(() =>
             UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, input.Publish)
         );
+        
+        var result = new UploadArticleResponse();
+
+        if (transformation is not null)
+        {
+            string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
+            string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
+
+            transformation.TargetSystemReference.ContentId = input.ContentId;
+            transformation.TargetSystemReference.ContentName = title;
+            transformation.TargetSystemReference.AdminUrl = editUrl;
+            transformation.TargetSystemReference.SystemName = "Salesforce Knowledge";
+            transformation.TargetSystemReference.SystemRef = domain;
+            transformation.TargetLanguage = input.Locale;
+
+            result.Content = await fileManagementClient.UploadAsync(
+                transformation.Serialize().ToStream(),
+                MediaTypes.Xliff, 
+                transformation.XliffFileName);
+        }
+        else
+            result.Content = input.Content;
+
+        return result;
     }
 
     [Action("Get articles not translated in language", Description = "Get articles not translated in specific language")]
@@ -494,6 +537,43 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(request);
     }
 
+    private async Task<Dictionary<string, FieldMetadataDto>> GetFieldMetadata()
+    {
+        string query =
+            """
+            SELECT 
+                QualifiedApiName, 
+                DurableId, 
+                Length 
+            FROM FieldDefinition 
+            WHERE EntityDefinition.QualifiedApiName = 'Knowledge__kav'
+            """;
+        string encodedQuery = Uri.EscapeDataString(query);
+        string endpoint = $"/services/data/v57.0/tooling/query/?q={encodedQuery}";
+    
+        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
+        var result = await Client.ExecuteWithErrorHandling<ObjectFieldsResponseDto>(request);
+
+        var fieldMetadataMap = new Dictionary<string, FieldMetadataDto>();
+
+        if (result?.Records == null) 
+            return fieldMetadataMap;
+        
+        foreach (var record in result.Records)
+        {
+            string pureId = record.DurableId;
+            if (!string.IsNullOrEmpty(pureId) && pureId.Contains('.'))
+                pureId = pureId.Split('.')[1]; 
+
+            fieldMetadataMap[record.QualifiedApiName] = new FieldMetadataDto
+            {
+                Id = pureId,
+                Length = record.Length
+            };
+        }
+
+        return fieldMetadataMap;
+    }
 
     private async Task<PublishedArticlesResponse> FetchPublishedArticles(string locale)
     {

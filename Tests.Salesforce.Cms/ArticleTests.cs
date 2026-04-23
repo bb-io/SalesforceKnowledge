@@ -162,14 +162,16 @@ public class ArticleTests : TestBase
         var action = new ArticleActions(InvocationContext, FileManager);
         var input = new UploadArticleRequest
         {
-            //ContentId = "kA0J5000000g47hKAA",
             Locale = "nl_NL",
-            Content = new FileReference { Name = "test blueprints.html" },
+            Content = new FileReference { Name = "test blueprints.html.xlf" },
             Publish = true,
         };
 
         // Act
-        await action.TranslateFromHtml(input);
+        var result = await action.TranslateFromHtml(input);
+        
+        // Assert
+        Console.WriteLine(result.Content.Name);
     }
 
     [TestMethod]

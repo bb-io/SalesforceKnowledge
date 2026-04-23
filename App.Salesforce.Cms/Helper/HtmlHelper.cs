@@ -1,20 +1,23 @@
 ﻿using Apps.Salesforce.Cms.Models.Dtos;
 using HtmlAgilityPack;
 using System.Net;
+using Apps.Salesforce.Cms.Constants;
 
 namespace Apps.Salesforce.Cms.Helper;
 
 public static class HtmlHelper
 {
-    public static HtmlDocument GenerateHtml(Dictionary<string, CustomContentFieldDto> contentFields)
+    public static HtmlDocument GenerateHtml(Dictionary<string, CustomContentFieldDto> contentFields, string locale)
     {
         var doc = new HtmlDocument();
 
         var htmlNode = doc.CreateElement("html");
         doc.DocumentNode.AppendChild(htmlNode);
-
+        htmlNode.SetAttributeValue("lang", locale);
+        
         var headNode = doc.CreateElement("head");
         htmlNode.AppendChild(headNode);
+        InjectHeadMetadata(doc, "Salesforce Knowledge", MetadataConstants.CmsName);
 
         var bodyNode = doc.CreateElement("body");
         htmlNode.AppendChild(bodyNode);
@@ -24,6 +27,12 @@ public static class HtmlHelper
             var containerDiv = doc.CreateElement("div");
             containerDiv.SetAttributeValue("data-fieldName", field.Key);
 
+            if (field.Value.MaxLength.HasValue)
+                containerDiv.SetAttributeValue(MetadataConstants.DataBbSize, field.Value.MaxLength.Value.ToString());
+            
+            if (!string.IsNullOrWhiteSpace(field.Value.CustomFieldId))
+                containerDiv.SetAttributeValue(MetadataConstants.DataBbKey, field.Value.CustomFieldId);
+            
             var labelHeader = doc.CreateElement("h3");
             labelHeader.InnerHtml = field.Value.Label ?? string.Empty;
 
