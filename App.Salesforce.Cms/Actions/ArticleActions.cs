@@ -1,4 +1,5 @@
-﻿using Apps.Salesforce.Cms;
+﻿using App.Salesforce.Cms.Constants;
+using Apps.Salesforce.Cms;
 using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms.Helper;
@@ -13,22 +14,22 @@ using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using Blackbird.Applications.Sdk.Utils.Html.Extensions;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Blackbird.Filters.Coders;
+using Blackbird.Filters.Constants;
+using Blackbird.Filters.Extensions;
+using Blackbird.Filters.Shared;
 using Blackbird.Filters.Transformations;
 using Blackbird.Filters.Xliff.Xliff2;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
+using System.Collections.Generic;
 using System.Net.Mime;
 using System.Text;
-using App.Salesforce.Cms.Constants;
-using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
-using Blackbird.Filters.Coders;
-using Blackbird.Filters.Constants;
-using Blackbird.Filters.Extensions;
-using Blackbird.Filters.Shared;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -92,22 +93,22 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         [ActionParameter] CategoryFilterRequest category)
     {
         var languageDetails = await GetKnowledgeSettings();
-        var result = await FetchPublishedArticles(locale.Locale);
+        var publishedArticles = await FetchPublishedArticles(locale.Locale);
 
         if (!string.IsNullOrEmpty(category.CategoryName))
         {
-            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName))).ToList();
+            publishedArticles = publishedArticles.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName))).ToList();
         }
         if (!string.IsNullOrEmpty(category.GroupName))
         {
-            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
+            publishedArticles = publishedArticles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
         }
 
         if (category.ExcludedDataCategories?.Any() == true)
         {
             var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
-            result.Articles = result.Articles
+            publishedArticles = publishedArticles
                 .Where(x =>
                     x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
                         cg.SelectedCategories != null &&
@@ -117,7 +118,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                 .ToList();
         }
 
-        var articlesResult = result!.Articles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
+        var articlesResult = publishedArticles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
         return new(articlesResult.ToList());
     }
 
@@ -129,7 +130,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var languageDetails = await GetKnowledgeSettings();
 
         var publishedArticles = await FetchPublishedArticles(languageDetails.DefaultLanguage);
-        var result = publishedArticles.Articles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
+        var result = publishedArticles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
 
         if (input.PublishedAfter.HasValue)
         {
@@ -595,12 +596,27 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return fieldMetadataMap;
     }
 
-    private async Task<PublishedArticlesResponse> FetchPublishedArticles(string locale)
+    private async Task<List<PublishedArticleDto>> FetchPublishedArticles(string locale)
     {
+        var articles = new List<PublishedArticleDto>();
         var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
-        var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        request.AddLocaleHeader(locale);
-        return await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+
+        while (!string.IsNullOrEmpty(endpoint))
+        {
+            var request = new SalesforceRequest(endpoint.TrimStart('/'), Method.Get, Creds);
+            request.AddLocaleHeader(locale);
+
+            var response = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+
+            if (response?.Articles == null)
+            {
+                break;
+            }
+            articles.AddRange(response.Articles);
+            endpoint = response.NextPageUrl;
+        }
+
+        return articles;
     }
 
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields, bool publishChanges)
