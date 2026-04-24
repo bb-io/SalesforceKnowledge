@@ -25,8 +25,10 @@ using System.Net.Mime;
 using System.Text;
 using App.Salesforce.Cms.Constants;
 using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
+using Blackbird.Filters.Coders;
 using Blackbird.Filters.Constants;
 using Blackbird.Filters.Extensions;
+using Blackbird.Filters.Shared;
 
 namespace App.Salesforce.Cms.Actions;
 
@@ -251,14 +253,25 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
         
         var doc = HtmlHelper.GenerateHtml(contentFields, locale.Locale);
-        HtmlHelper.InjectHeadMetadata(doc, input.ContentId, MetadataConstants.ContentId);
-        HtmlHelper.InjectHeadMetadata(doc, article.Title, MetadataConstants.ContentName);
-        HtmlHelper.InjectHeadMetadata(doc, domain, MetadataConstants.SystemRef);
-        HtmlHelper.InjectHeadMetadata(doc, editUrl, MetadataConstants.AdminView);
         HtmlHelper.InjectTitle(doc, article.Title);
+        
+        var systemReference = new SystemReference
+        {
+            ContentId = input.ContentId,
+            ContentName = article.Title,
+            SystemRef = domain,
+            AdminUrl = editUrl,
+            SystemName = "Salesforce Knowledge"
+        };
 
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(doc.DocumentNode.OuterHtml));
-        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{article.Title}.html");
+        string fileName = $"{article.Title}.html";
+        
+        var coded = new HtmlContentCoder().Deserialize(doc.DocumentNode.OuterHtml, fileName);
+        coded.SystemReference = systemReference;
+        var serialized = coded.Serialize();
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(serialized));
+        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, fileName);
         return new(file);
     }
 
@@ -303,16 +316,16 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                    throw new PluginMisconfigurationException("XLIFF did not contain files");
         }
 
-        var doc = html.AsHtmlDocument();
-
+        var coded = new HtmlContentCoder().Deserialize(html, input.Content.Name);
         string articleId = input.ContentId ?? 
-                           HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ContentId) ??
-                           HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId) ?? 
+                           coded.SystemReference.ContentId ??
+                           coded.Metadata[MetadataConstants.ArticleId] ?? 
                            throw new PluginMisconfigurationException(
                                "Article ID is required, it needs to be present either in the input or file");
 
         var fieldsToUpdate = new Dictionary<string, string>();
 
+        var doc = html.AsHtmlDocument();
         string? title = HtmlHelper.ExtractTitle(doc);
         if (!string.IsNullOrWhiteSpace(title))
             fieldsToUpdate["Title"] = title;

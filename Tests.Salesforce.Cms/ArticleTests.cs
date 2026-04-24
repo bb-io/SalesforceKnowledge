@@ -163,7 +163,7 @@ public class ArticleTests : TestBase
         var input = new UploadArticleRequest
         {
             Locale = "nl_NL",
-            Content = new FileReference { Name = "test blueprints.html.xlf" },
+            Content = new FileReference { Name = "test blueprints.html" },
             Publish = true,
         };
 

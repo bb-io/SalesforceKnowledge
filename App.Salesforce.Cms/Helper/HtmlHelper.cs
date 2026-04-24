@@ -17,7 +17,6 @@ public static class HtmlHelper
         
         var headNode = doc.CreateElement("head");
         htmlNode.AppendChild(headNode);
-        InjectHeadMetadata(doc, "Salesforce Knowledge", MetadataConstants.CmsName);
 
         var bodyNode = doc.CreateElement("body");
         htmlNode.AppendChild(bodyNode);
@@ -45,25 +44,6 @@ public static class HtmlHelper
         }
 
         return doc;
-    }
-
-    public static void InjectHeadMetadata(HtmlDocument doc, string content, string metadataId)
-    {
-        var head = doc.DocumentNode.SelectSingleNode("//head");
-        if (head == null) 
-            return;
-
-        var existingMetas = doc.DocumentNode.SelectNodes($"//meta[@name='{metadataId}']");
-        if (existingMetas != null)
-        {
-            foreach (var meta in existingMetas)
-                meta.Remove();
-        }
-
-        var newMeta = doc.CreateElement("meta");
-        newMeta.SetAttributeValue("name", metadataId);
-        newMeta.SetAttributeValue("content", content);
-        head.PrependChild(newMeta);
     }
 
     public static void InjectTitle(HtmlDocument doc, string title)
