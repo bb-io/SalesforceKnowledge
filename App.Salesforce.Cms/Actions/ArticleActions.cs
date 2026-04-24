@@ -319,7 +319,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var coded = new HtmlContentCoder().Deserialize(html, input.Content.Name);
         string articleId = input.ContentId ?? 
                            coded.SystemReference.ContentId ??
-                           coded.Metadata[MetadataConstants.ArticleId] ?? 
+                           coded.Metadata?.GetValueOrDefault(MetadataConstants.ArticleId) ??
                            throw new PluginMisconfigurationException(
                                "Article ID is required, it needs to be present either in the input or file");
 
@@ -353,7 +353,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         if (transformation is not null)
         {
             string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
-            string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
+            string editUrl = $"{domain}/lightning/r/Knowledge__kav/{articleId}/view";
 
             transformation.TargetSystemReference.ContentId = input.ContentId;
             transformation.TargetSystemReference.ContentName = title;
