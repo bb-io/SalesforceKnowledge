@@ -312,6 +312,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         if (Xliff2Serializer.IsXliff2(html))
         {
             transformation = Transformation.Parse(html, input.Content.Name);
+            transformation.TargetLanguage = input.Locale;
             html = transformation.Target().Serialize() ?? 
                    throw new PluginMisconfigurationException("XLIFF did not contain files");
         }
@@ -360,7 +361,6 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             transformation.TargetSystemReference.AdminUrl = editUrl;
             transformation.TargetSystemReference.SystemName = "Salesforce Knowledge";
             transformation.TargetSystemReference.SystemRef = domain;
-            transformation.TargetLanguage = input.Locale;
 
             result.Content = await fileManagementClient.UploadAsync(
                 transformation.Serialize().ToStream(),
