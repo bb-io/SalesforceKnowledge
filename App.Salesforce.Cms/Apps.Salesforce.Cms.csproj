@@ -13,7 +13,7 @@
     <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.1.0" />
     <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.0.26" />
     <PackageReference Include="Blackbird.Applications.Sdk.Utils.Html" Version="1.0.1" />
-    <PackageReference Include="Blackbird.Filters" Version="1.1.61" />
+    <PackageReference Include="Blackbird.Filters" Version="1.1.62" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png"></EmbeddedResource>

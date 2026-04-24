@@ -252,7 +252,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
         string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
         
-        var doc = HtmlHelper.GenerateHtml(contentFields, locale.Locale);
+        var doc = HtmlHelper.GenerateHtml(contentFields);
         HtmlHelper.InjectTitle(doc, article.Title);
         
         var systemReference = new SystemReference
@@ -268,6 +268,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         
         var coded = new HtmlContentCoder().Deserialize(doc.DocumentNode.OuterHtml, fileName);
         coded.SystemReference = systemReference;
+        coded.Language = locale.Locale;
         var serialized = coded.Serialize();
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(serialized));
@@ -312,7 +313,6 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         if (Xliff2Serializer.IsXliff2(html))
         {
             transformation = Transformation.Parse(html, input.Content.Name);
-            transformation.TargetLanguage = input.Locale;
             html = transformation.Target().Serialize() ?? 
                    throw new PluginMisconfigurationException("XLIFF did not contain files");
         }
@@ -361,6 +361,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             transformation.TargetSystemReference.AdminUrl = editUrl;
             transformation.TargetSystemReference.SystemName = "Salesforce Knowledge";
             transformation.TargetSystemReference.SystemRef = domain;
+            transformation.TargetLanguage = input.Locale;
 
             result.Content = await fileManagementClient.UploadAsync(
                 transformation.Serialize().ToStream(),
@@ -368,7 +369,13 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                 transformation.XliffFileName);
         }
         else
-            result.Content = input.Content;
+        {
+            coded.Language = input.Locale;
+            result.Content = await fileManagementClient.UploadAsync(
+                coded.Serialize().ToStream(),
+                "text/html", 
+                input.Content.Name);
+        }
 
         return result;
     }

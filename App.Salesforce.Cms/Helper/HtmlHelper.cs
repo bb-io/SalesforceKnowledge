@@ -7,14 +7,12 @@ namespace Apps.Salesforce.Cms.Helper;
 
 public static class HtmlHelper
 {
-    public static HtmlDocument GenerateHtml(Dictionary<string, CustomContentFieldDto> contentFields, string locale)
+    public static HtmlDocument GenerateHtml(Dictionary<string, CustomContentFieldDto> contentFields)
     {
         var doc = new HtmlDocument();
 
         var htmlNode = doc.CreateElement("html");
         doc.DocumentNode.AppendChild(htmlNode);
-        htmlNode.SetAttributeValue("lang", locale);
-        
         var headNode = doc.CreateElement("head");
         htmlNode.AppendChild(headNode);
 
