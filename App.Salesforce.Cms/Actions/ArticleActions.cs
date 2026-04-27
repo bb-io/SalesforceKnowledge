@@ -1,4 +1,5 @@
-﻿using Apps.Salesforce.Cms;
+﻿using App.Salesforce.Cms.Constants;
+using Apps.Salesforce.Cms;
 using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms.Helper;
@@ -13,14 +14,20 @@ using Blackbird.Applications.Sdk.Common.Actions;
 using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Blackbird.Applications.Sdk.Utils.Extensions.Files;
+using Blackbird.Applications.Sdk.Utils.Extensions.Sdk;
 using Blackbird.Applications.Sdk.Utils.Html.Extensions;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.SDK.Extensions.FileManagement.Interfaces;
+using Blackbird.Filters.Coders;
+using Blackbird.Filters.Constants;
+using Blackbird.Filters.Extensions;
+using Blackbird.Filters.Shared;
 using Blackbird.Filters.Transformations;
 using Blackbird.Filters.Xliff.Xliff2;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
+using System.Collections.Generic;
 using System.Net.Mime;
 using System.Text;
 
@@ -86,22 +93,22 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         [ActionParameter] CategoryFilterRequest category)
     {
         var languageDetails = await GetKnowledgeSettings();
-        var result = await FetchPublishedArticles(locale.Locale);
+        var publishedArticles = await FetchPublishedArticles(locale.Locale);
 
         if (!string.IsNullOrEmpty(category.CategoryName))
         {
-            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName))).ToList();
+            publishedArticles = publishedArticles.Where(x => x.CategoryGroups.Any(cg => cg.SelectedCategories.Any(sc => sc.CategoryName == category.CategoryName))).ToList();
         }
         if (!string.IsNullOrEmpty(category.GroupName))
         {
-            result.Articles = result.Articles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
+            publishedArticles = publishedArticles.Where(x => x.CategoryGroups.Any(cg => cg.GroupName == category.GroupName)).ToList();
         }
 
         if (category.ExcludedDataCategories?.Any() == true)
         {
             var excludedSet = new HashSet<string>(category.ExcludedDataCategories, StringComparer.OrdinalIgnoreCase);
 
-            result.Articles = result.Articles
+            publishedArticles = publishedArticles
                 .Where(x =>
                     x.CategoryGroups == null || !x.CategoryGroups.Any(cg =>
                         cg.SelectedCategories != null &&
@@ -111,7 +118,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
                 .ToList();
         }
 
-        var articlesResult = result!.Articles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
+        var articlesResult = publishedArticles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
         return new(articlesResult.ToList());
     }
 
@@ -123,7 +130,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var languageDetails = await GetKnowledgeSettings();
 
         var publishedArticles = await FetchPublishedArticles(languageDetails.DefaultLanguage);
-        var result = publishedArticles.Articles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
+        var result = publishedArticles.Select(a => new ArticleDto(a, languageDetails.DefaultLanguage));
 
         if (input.PublishedAfter.HasValue)
         {
@@ -227,20 +234,46 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
             items.RemoveAll(i => input.FieldsToExclude.Contains(i.Name));
 
         var contentFields = new Dictionary<string, CustomContentFieldDto>();
-        foreach (var item in items)
+        Dictionary<string, FieldMetadataDto> metadataMap = await GetFieldMetadata();
+        
+        foreach (var item in items.Where(item => item.Name.EndsWith("__c")))
         {
-            if (item.Name.EndsWith("__c"))  // Custom field with content
-                contentFields[item.Name] = new CustomContentFieldDto(item.Label, item.Value);
+            int? maxLength = null;
+            string? fieldId = null;
+
+            if (metadataMap.TryGetValue(item.Name, out var meta))
+            {
+                maxLength = meta.Length > 0 ? meta.Length : null;
+                fieldId = meta.Id;
+            }
+    
+            contentFields[item.Name] = new CustomContentFieldDto(item.Label, item.Value, maxLength, fieldId);
         }
-
+        
+        string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
+        string editUrl = $"{domain}/lightning/r/Knowledge__kav/{input.ContentId}/view";
+        
         var doc = HtmlHelper.GenerateHtml(contentFields);
-
-        HtmlHelper.InjectHeadMetadata(doc, locale.Locale, MetadataConstants.Locale);
-        HtmlHelper.InjectHeadMetadata(doc, input.ContentId, MetadataConstants.ArticleId);
         HtmlHelper.InjectTitle(doc, article.Title);
+        
+        var systemReference = new SystemReference
+        {
+            ContentId = input.ContentId,
+            ContentName = article.Title,
+            SystemRef = "https://knowledge.salesforce.com/",
+            AdminUrl = editUrl,
+            SystemName = "Salesforce Knowledge"
+        };
 
-        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(doc.DocumentNode.OuterHtml));
-        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, $"{article.Title}.html");
+        string fileName = $"{article.Title}.html";
+        
+        var coded = new HtmlContentCoder().Deserialize(doc.DocumentNode.OuterHtml, fileName);
+        coded.SystemReference = systemReference;
+        coded.Language = locale.Locale;
+        var serialized = coded.Serialize();
+
+        using var stream = new MemoryStream(Encoding.UTF8.GetBytes(serialized));
+        var file = await fileManagementClient.UploadAsync(stream, MediaTypeNames.Text.Html, fileName);
         return new(file);
     }
 
@@ -257,64 +290,95 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         }
 
         var doc = html.AsHtmlDocument();
-
-        var articleId = HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId);
-        if (string.IsNullOrWhiteSpace(articleId))
-        {
+        var coded = new HtmlContentCoder().Deserialize(doc.DocumentNode.OuterHtml, input.File.Name);
+        
+        string articleId =
+            coded.SystemReference.ContentId ??
+            coded.Metadata.GetValueOrDefault(MetadataConstants.ArticleId) ?? 
             throw new PluginApplicationException(
-                "Couldn't find 'blackbird-article-id' metadata in the file. " +
+                "Couldn't find 'blackbird-ucid' or 'blackbird-article-id' metadata in the file. " +
                 "Ensure the file was generated by the 'Download article' action."
             );
-        }
 
         return articleId;
     }
 
     [BlueprintActionDefinition(BlueprintAction.UploadContent)]
     [Action("Upload article", Description = "Upload article from a file")]
-    public async Task TranslateFromHtml([ActionParameter] UploadArticleRequest input)
+    public async Task<UploadArticleResponse> TranslateFromHtml([ActionParameter] UploadArticleRequest input)
     {
-        using var file = await fileManagementClient.DownloadAsync(input.Content);
+        await using var file = await fileManagementClient.DownloadAsync(input.Content);
         string html = Encoding.UTF8.GetString(await file.GetByteData());
 
+        Transformation? transformation = null;
         if (Xliff2Serializer.IsXliff2(html))
         {
-            html = Transformation.Parse(html, input.Content.Name).Target().Serialize() 
-                ?? throw new PluginMisconfigurationException("XLIFF did not contain files");
+            transformation = Transformation.Parse(html, input.Content.Name);
+            html = transformation.Target().Serialize() ?? 
+                   throw new PluginMisconfigurationException("XLIFF did not contain files");
         }
 
-        var doc = html.AsHtmlDocument();
-
-        string articleId = input.ContentId 
-            ?? HtmlHelper.ExtractHeadMetadata(doc, MetadataConstants.ArticleId)
-            ?? throw new PluginMisconfigurationException(
-                "Article ID is required, it needs to be present either in the input or file"
-            );
+        var coded = new HtmlContentCoder().Deserialize(html, input.Content.Name);
+        string articleId = input.ContentId ?? 
+                           coded.SystemReference.ContentId ??
+                           coded.Metadata?.GetValueOrDefault(MetadataConstants.ArticleId) ??
+                           throw new PluginMisconfigurationException(
+                               "Article ID is required, it needs to be present either in the input or file");
 
         var fieldsToUpdate = new Dictionary<string, string>();
 
+        var doc = html.AsHtmlDocument();
         string? title = HtmlHelper.ExtractTitle(doc);
         if (!string.IsNullOrWhiteSpace(title))
             fieldsToUpdate["Title"] = title;
 
-        var body = doc.DocumentNode.SelectSingleNode("//body");
-        if (body != null)
+        var body = doc.DocumentNode.SelectSingleNode("//body") ?? 
+                   throw new PluginMisconfigurationException("HTML body tag was not found in the file");
+        
+        foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element))
         {
-            foreach (var nodeField in body.ChildNodes.Where(n => n.NodeType == HtmlNodeType.Element))
-            {
-                var fieldName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
-                var divNode = nodeField.SelectSingleNode("div");
-                if (divNode != null)
-                {
-                    var text = divNode.InnerHtml;
-                    fieldsToUpdate.Add(fieldName, text);
-                }
-            }
+            var fieldName = nodeField.GetAttributeValue("data-fieldName", string.Empty);
+            var divNode = nodeField.SelectSingleNode("div");
+            if (divNode == null) 
+                continue;
+            
+            var text = divNode.InnerHtml;
+            fieldsToUpdate.Add(fieldName, text);
         }
 
         await ErrorHandler.ExecuteWithErrorHandling(() =>
             UpdateMultipleArticleFields(articleId, input.Locale, fieldsToUpdate, input.Publish)
         );
+        
+        var result = new UploadArticleResponse();
+
+        if (transformation is not null)
+        {
+            string domain = $"https://{Creds.Get(CredNames.Domain).Value}.my.salesforce.com";
+            string editUrl = $"{domain}/lightning/r/Knowledge__kav/{articleId}/view";
+
+            transformation.TargetSystemReference.ContentId = input.ContentId;
+            transformation.TargetSystemReference.ContentName = title;
+            transformation.TargetSystemReference.AdminUrl = editUrl;
+            transformation.TargetSystemReference.SystemName = "Salesforce Knowledge";
+            transformation.TargetSystemReference.SystemRef = domain;
+            transformation.TargetLanguage = input.Locale;
+
+            result.Content = await fileManagementClient.UploadAsync(
+                transformation.Serialize().ToStream(),
+                MediaTypes.Xliff, 
+                transformation.XliffFileName);
+        }
+        else
+        {
+            coded.Language = input.Locale;
+            result.Content = await fileManagementClient.UploadAsync(
+                coded.Serialize().ToStream(),
+                "text/html", 
+                input.Content.Name);
+        }
+
+        return result;
     }
 
     [Action("Get articles not translated in language", Description = "Get articles not translated in specific language")]
@@ -494,13 +558,65 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(request);
     }
 
-
-    private async Task<PublishedArticlesResponse> FetchPublishedArticles(string locale)
+    private async Task<Dictionary<string, FieldMetadataDto>> GetFieldMetadata()
     {
-        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
+        string query =
+            """
+            SELECT 
+                QualifiedApiName, 
+                DurableId, 
+                Length 
+            FROM FieldDefinition 
+            WHERE EntityDefinition.QualifiedApiName = 'Knowledge__kav'
+            """;
+        string encodedQuery = Uri.EscapeDataString(query);
+        string endpoint = $"/services/data/v57.0/tooling/query/?q={encodedQuery}";
+    
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
-        request.AddLocaleHeader(locale);
-        return await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+        var result = await Client.ExecuteWithErrorHandling<ObjectFieldsResponseDto>(request);
+
+        var fieldMetadataMap = new Dictionary<string, FieldMetadataDto>();
+
+        if (result?.Records == null) 
+            return fieldMetadataMap;
+        
+        foreach (var record in result.Records)
+        {
+            string pureId = record.DurableId;
+            if (!string.IsNullOrEmpty(pureId) && pureId.Contains('.'))
+                pureId = pureId.Split('.')[1]; 
+
+            fieldMetadataMap[record.QualifiedApiName] = new FieldMetadataDto
+            {
+                Id = pureId,
+                Length = record.Length
+            };
+        }
+
+        return fieldMetadataMap;
+    }
+
+    private async Task<List<PublishedArticleDto>> FetchPublishedArticles(string locale)
+    {
+        var articles = new List<PublishedArticleDto>();
+        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100";
+
+        while (!string.IsNullOrEmpty(endpoint))
+        {
+            var request = new SalesforceRequest(endpoint.TrimStart('/'), Method.Get, Creds);
+            request.AddLocaleHeader(locale);
+
+            var response = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+
+            if (response?.Articles == null)
+            {
+                break;
+            }
+            articles.AddRange(response.Articles);
+            endpoint = response.NextPageUrl;
+        }
+
+        return articles;
     }
 
     private async Task UpdateMultipleArticleFields(string articleId, string locale, Dictionary<string, string> fields, bool publishChanges)

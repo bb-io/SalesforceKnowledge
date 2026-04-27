@@ -1,6 +1,7 @@
 ﻿using Apps.Salesforce.Cms.Models.Dtos;
 using HtmlAgilityPack;
 using System.Net;
+using Apps.Salesforce.Cms.Constants;
 
 namespace Apps.Salesforce.Cms.Helper;
 
@@ -12,7 +13,6 @@ public static class HtmlHelper
 
         var htmlNode = doc.CreateElement("html");
         doc.DocumentNode.AppendChild(htmlNode);
-
         var headNode = doc.CreateElement("head");
         htmlNode.AppendChild(headNode);
 
@@ -24,6 +24,12 @@ public static class HtmlHelper
             var containerDiv = doc.CreateElement("div");
             containerDiv.SetAttributeValue("data-fieldName", field.Key);
 
+            if (field.Value.MaxLength.HasValue)
+                containerDiv.SetAttributeValue(MetadataConstants.DataBbSize, field.Value.MaxLength.Value.ToString());
+            
+            if (!string.IsNullOrWhiteSpace(field.Value.CustomFieldId))
+                containerDiv.SetAttributeValue(MetadataConstants.DataBbKey, field.Value.CustomFieldId);
+            
             var labelHeader = doc.CreateElement("h3");
             labelHeader.InnerHtml = field.Value.Label ?? string.Empty;
 
@@ -36,25 +42,6 @@ public static class HtmlHelper
         }
 
         return doc;
-    }
-
-    public static void InjectHeadMetadata(HtmlDocument doc, string content, string metadataId)
-    {
-        var head = doc.DocumentNode.SelectSingleNode("//head");
-        if (head == null) 
-            return;
-
-        var existingMetas = doc.DocumentNode.SelectNodes($"//meta[@name='{metadataId}']");
-        if (existingMetas != null)
-        {
-            foreach (var meta in existingMetas)
-                meta.Remove();
-        }
-
-        var newMeta = doc.CreateElement("meta");
-        newMeta.SetAttributeValue("name", metadataId);
-        newMeta.SetAttributeValue("content", content);
-        head.PrependChild(newMeta);
     }
 
     public static void InjectTitle(HtmlDocument doc, string title)
@@ -75,12 +62,6 @@ public static class HtmlHelper
 
         titleNode.RemoveAllChildren();
         titleNode.AppendChild(doc.CreateTextNode(title));
-    }
-
-    public static string? ExtractHeadMetadata(HtmlDocument doc, string metadataId)
-    {
-        var metaTag = doc.DocumentNode.SelectSingleNode($"//meta[@name='{metadataId}']");
-        return metaTag?.GetAttributeValue("content", string.Empty);
     }
 
     public static string? ExtractTitle(HtmlDocument doc)

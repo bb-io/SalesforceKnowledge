@@ -27,6 +27,7 @@ public class SalesforceClient(IEnumerable<AuthenticationCredentialsProvider> cre
     public override async Task<T> ExecuteWithErrorHandling<T>(RestRequest request)
     {
         string content = (await ExecuteWithErrorHandling(request)).Content;
+        if (content == "[]") { return default(T); }
         T val = JsonConvert.DeserializeObject<T>(content, JsonSettings);
         if (val == null)
         {

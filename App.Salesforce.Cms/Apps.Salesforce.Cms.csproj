@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Product>Salesforce Knowledge</Product>
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <Description>Create, manage, and share a centralized repository of information and content to facilitate better customer support and internal knowledge sharing</Description>
     <AssemblyName>Apps.Salesforce.Cms</AssemblyName>
   </PropertyGroup>
@@ -13,7 +13,7 @@
     <PackageReference Include="Blackbird.Applications.SDK.Extensions.FileManagement" Version="1.1.0" />
     <PackageReference Include="Blackbird.Applications.Sdk.Utils" Version="1.0.26" />
     <PackageReference Include="Blackbird.Applications.Sdk.Utils.Html" Version="1.0.1" />
-    <PackageReference Include="Blackbird.Filters" Version="1.1.52" />
+    <PackageReference Include="Blackbird.Filters" Version="1.1.63" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource CopyToOutputDirectory="Always" Include="image\icon.png"></EmbeddedResource>

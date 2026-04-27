@@ -162,14 +162,16 @@ public class ArticleTests : TestBase
         var action = new ArticleActions(InvocationContext, FileManager);
         var input = new UploadArticleRequest
         {
-            //ContentId = "kA0J5000000g47hKAA",
             Locale = "nl_NL",
             Content = new FileReference { Name = "test blueprints.html" },
             Publish = true,
         };
 
         // Act
-        await action.TranslateFromHtml(input);
+        var result = await action.TranslateFromHtml(input);
+        
+        // Assert
+        Console.WriteLine(result.Content.Name);
     }
 
     [TestMethod]
@@ -255,7 +257,7 @@ public class ArticleTests : TestBase
     {
         // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetIdFromFileRequest { File = new FileReference { Name = "my art.html" } };
+        var input = new GetIdFromFileRequest { File = new FileReference { Name = "test.html" } };
 
         // Act
         var result = await action.GetArticleIdFromHtmlFile(input);
