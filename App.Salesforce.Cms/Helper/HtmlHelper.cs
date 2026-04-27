@@ -64,12 +64,6 @@ public static class HtmlHelper
         titleNode.AppendChild(doc.CreateTextNode(title));
     }
 
-    public static string? ExtractHeadMetadata(HtmlDocument doc, string metadataId)
-    {
-        var metaTag = doc.DocumentNode.SelectSingleNode($"//meta[@name='{metadataId}']");
-        return metaTag?.GetAttributeValue("content", string.Empty);
-    }
-
     public static string? ExtractTitle(HtmlDocument doc)
     {
         var titleNode = doc.DocumentNode.SelectSingleNode("//head/title");
