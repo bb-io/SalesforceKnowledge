@@ -293,7 +293,7 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         var coded = new HtmlContentCoder().Deserialize(doc.DocumentNode.OuterHtml, input.File.Name);
         
         string articleId =
-            coded.Metadata.GetValueOrDefault("blackbird-" + Meta.Types.ContentId) ??
+            coded.SystemReference.ContentId ??
             coded.Metadata.GetValueOrDefault(MetadataConstants.ArticleId) ?? 
             throw new PluginApplicationException(
                 "Couldn't find 'blackbird-ucid' or 'blackbird-article-id' metadata in the file. " +

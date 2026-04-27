@@ -257,7 +257,7 @@ public class ArticleTests : TestBase
     {
         // Arrange
         var action = new ArticleActions(InvocationContext, FileManager);
-        var input = new GetIdFromFileRequest { File = new FileReference { Name = "my art.html" } };
+        var input = new GetIdFromFileRequest { File = new FileReference { Name = "test.html" } };
 
         // Act
         var result = await action.GetArticleIdFromHtmlFile(input);
