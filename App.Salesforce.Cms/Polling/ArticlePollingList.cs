@@ -8,12 +8,16 @@ using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Blackbird.Applications.Sdk.Common.Invocation;
+using System.Collections.Generic;
 
 namespace Apps.Salesforce.Cms.Polling;
 
 [PollingEventList("Articles")]
 public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
+    private const int PublishedArticlesPageSize = 100;
+    private const int VisibilityBatchSize = 100;
+
     [PollingEvent("On articles created or updated", "Triggered when articles are created or updated")]
     public async Task<PollingEventResponse<DateMemory, SearchMasterArticlesResponse>> OnArticlesUpdated(
         PollingEventRequest<DateMemory> request)
@@ -145,13 +149,12 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         var languageDetails = await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(langRequest);
         var locale = languageDetails?.DefaultLanguage ?? "en_US";
 
-        var endpoint = "services/data/v57.0/support/knowledgeArticles?pageSize=100&sort=LastPublishedDate";
-        var sfRequest = new SalesforceRequest(endpoint, Method.Get, Creds);
-        sfRequest.AddLocaleHeader(locale);
-
-        var publishedArticles = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(sfRequest);
-        var filtered = publishedArticles?.Articles?.Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate) ?? [];
-        var recentArticles = filtered.ToList();
+        var publishedArticles = await FetchPublishedArticlesAsync(locale);
+        var recentArticles = publishedArticles
+            .Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate)
+            .GroupBy(a => a.Id)
+            .Select(g => g.OrderByDescending(x => x.LastPublishedDate).First())
+            .ToList();
 
         if (recentArticles.Count == 0)
         {
@@ -231,6 +234,55 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         if (ids.Length == 0) 
             return [];
 
+        var map = new Dictionary<string, KnowledgeArticleVisibilityDto>();
+        foreach (var batch in ids.Chunk(VisibilityBatchSize))
+        {
+            var batchMap = await LoadVisibilityBatchByArticleIdAsync(batch, locale);
+            foreach (var pair in batchMap)
+            {
+                map[pair.Key] = pair.Value;
+            }
+        }
+
+        return map;
+    }
+
+    private async Task<List<PublishedArticleDto>> FetchPublishedArticlesAsync(string locale)
+    {
+        var articles = new List<PublishedArticleDto>();
+        var visitedEndpoints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var endpoint = $"services/data/v57.0/support/knowledgeArticles?pageSize={PublishedArticlesPageSize}&sort=LastPublishedDate";
+
+        while (!string.IsNullOrWhiteSpace(endpoint) && visitedEndpoints.Add(endpoint))
+        {
+            var request = new SalesforceRequest(endpoint.TrimStart('/'), Method.Get, Creds);
+            request.AddLocaleHeader(locale);
+
+            var response = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
+            if (response?.Articles == null || response.Articles.Count == 0)
+            {
+                break;
+            }
+
+            articles.AddRange(response.Articles.Where(x => !string.IsNullOrWhiteSpace(x.Id)));
+            endpoint = response.NextPageUrl;
+        }
+
+        return articles;
+    }
+
+    private async Task<Dictionary<string, KnowledgeArticleVisibilityDto>> LoadVisibilityBatchByArticleIdAsync(
+        IEnumerable<string> articleIds,
+        string locale)
+    {
+        var ids = articleIds
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToArray();
+
+        if (ids.Length == 0)
+            return [];
+
         string q1 =
             $"SELECT KnowledgeArticleId, Id, IsVisibleInPkb, IsVisibleInCsp " +
             $"FROM KnowledgeArticleVersion " +
@@ -242,24 +294,28 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         req.AddLocaleHeader(locale);
 
         var r1 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req);
-        var map = r1?.Records?.ToDictionary(x => x.KnowledgeArticleId, x => x) ?? [];
+        var map = r1?.Records?
+            .Where(x => !string.IsNullOrWhiteSpace(x.KnowledgeArticleId))
+            .GroupBy(x => x.KnowledgeArticleId)
+            .ToDictionary(g => g.Key, g => g.First()) ?? [];
 
-        if (map.Count == 0)
-        {
-            string q2 =
-                $"SELECT KnowledgeArticleId, Id, IsVisibleInPkb, IsVisibleInCsp " +
-                $"FROM KnowledgeArticleVersion " +
-                $"WHERE PublishStatus = 'Online' AND Language = '{locale}' " +
-                $"AND Id IN ({string.Join(",", ids.Select(x => $"'{x}'"))})";
+        if (map.Count != 0)
+            return map;
 
-            var req2 = new SalesforceRequest("services/data/v57.0/query", Method.Get, Creds);
-            req2.AddQueryParameter("q", q2);
-            req2.AddLocaleHeader(locale);
+        string q2 =
+            $"SELECT KnowledgeArticleId, Id, IsVisibleInPkb, IsVisibleInCsp " +
+            $"FROM KnowledgeArticleVersion " +
+            $"WHERE PublishStatus = 'Online' AND Language = '{locale}' " +
+            $"AND Id IN ({string.Join(",", ids.Select(x => $"'{x}'"))})";
 
-            var r2 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req2);
-            map = r2?.Records?.GroupBy(x => x.KnowledgeArticleId).ToDictionary(g => g.Key, g => g.First()) ?? [];
-        }
+        var req2 = new SalesforceRequest("services/data/v57.0/query", Method.Get, Creds);
+        req2.AddQueryParameter("q", q2);
+        req2.AddLocaleHeader(locale);
 
-        return map;
+        var r2 = await Client.ExecuteWithErrorHandling<RecordWrapper<KnowledgeArticleVisibilityDto>>(req2);
+        return r2?.Records?
+            .Where(x => !string.IsNullOrWhiteSpace(x.KnowledgeArticleId))
+            .GroupBy(x => x.KnowledgeArticleId)
+            .ToDictionary(g => g.Key, g => g.First()) ?? [];
     }
 }
