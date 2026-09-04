@@ -1,4 +1,5 @@
-﻿using App.Salesforce.Cms.Constants;
+﻿using System.Net;
+using App.Salesforce.Cms.Constants;
 using Apps.Salesforce.Cms;
 using Apps.Salesforce.Cms.Api;
 using Apps.Salesforce.Cms.Constants;
@@ -27,7 +28,6 @@ using Blackbird.Filters.Xliff.Xliff2;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using RestSharp;
-using System.Collections.Generic;
 using System.Net.Mime;
 using System.Text;
 
@@ -197,16 +197,28 @@ public class ArticleActions(InvocationContext invocationContext, IFileManagement
         return await Client.ExecuteWithErrorHandling<ArticleInfoDto>(request);
     }
 
-    [Action("Get all article content", Description = "Get all article content")]
+    [Action("Get all article content", Description = "Get all content from a published article in a specific language")]
     public async Task<ArticleContentDto> GetArticleContent(
         [ActionParameter] ArticleIdentifier articleInput,
         [ActionParameter] LocaleIdentifier input)
     {
-        var endpoint = $"services/data/v57.0/support/knowledgeArticles/{articleInput.ArticleId}";
+        string articleId = articleInput.ArticleId;
+        
+        var endpoint = $"services/data/v57.0/support/knowledgeArticles/{articleId}";
         var request = new SalesforceRequest(endpoint, Method.Get, Creds);
         request.AddLocaleHeader(input.Locale);
 
-        return await Client.ExecuteWithErrorHandling<ArticleContentDto>(request);
+        try
+        {
+            return await Client.ExecuteWithErrorHandling<ArticleContentDto>(request);
+        }
+        catch (PluginApplicationException ex) when (ex.Message.StartsWith($"Status code: {HttpStatusCode.NotFound}", StringComparison.Ordinal))
+        {
+            throw new PluginMisconfigurationException(
+                $"No published version of article '{articleId}' in language '{input.Locale}'. " +
+                "This action only returns published articles - " +
+                "publish the draft first with 'Publish knowledge article draft'");
+        }
     }
 
     [Action("Get article custom content", Description = "Get article custom content")]

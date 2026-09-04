@@ -43,7 +43,7 @@ Once the connected app is created, you can get the Client ID (consumer key) and 
 - **Search published articles** Search published articles
 - **Search knowledge article versions** Search knowledge article versions
 - **Get article info** Get article information
-- **Get all article content** Get all article content
+- **Get all article content** Get all content from a published article in a specific language
 - **Get article custom content** Get article custom content
 - **Download article** Download article content
 - **Get article ID from a file** Get article ID from file metadata
