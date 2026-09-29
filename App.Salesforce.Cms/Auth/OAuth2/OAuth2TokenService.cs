@@ -3,6 +3,7 @@ using Apps.Salesforce.Cms.Models.Utility.Error;
 using Blackbird.Applications.Sdk.Common;
 using Blackbird.Applications.Sdk.Common.Authentication;
 using Blackbird.Applications.Sdk.Common.Authentication.OAuth2;
+using Blackbird.Applications.Sdk.Common.Exceptions;
 using Blackbird.Applications.Sdk.Common.Invocation;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
@@ -76,7 +77,8 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
             InvocationContext.Logger?.LogError(
                 $"[SalesforceKnowledge][OAuth] Cannot start refresh token flow because no refresh token is stored. " +
                 $"Domain: {values[CredNames.Domain]}; ConnectionFingerprint: {connectionFingerprint}", []);
-            throw new("No refresh token found, you should update your OAuth app scopes to give Blackbird access to it");
+            throw new PluginMisconfigurationException(
+                "No refresh token found, you should update your OAuth app scopes to give Blackbird access to it");
         }
 
         var localExpiresAt = GetValueOrMissing(values, CredNames.ExpiresAt);
@@ -151,17 +153,24 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
                     // Salesforce and upstream gateways can return HTML for service failures.
                 }
 
+                var rawOAuthError = errorResponse?.Error;
+                var hasOAuthError = !string.IsNullOrWhiteSpace(rawOAuthError);
+                var oauthError = hasOAuthError ? rawOAuthError! : "unknown";
+                var oauthErrorDescription = string.IsNullOrWhiteSpace(errorResponse?.ErrorDescription)
+                    ? "unavailable"
+                    : errorResponse.ErrorDescription;
+
                 InvocationContext.Logger?.LogError(
                     $"[SalesforceKnowledge][OAuth] Token request failed. GrantType: {grantType}; " +
                     $"RequestFingerprint: {requestFingerprint}; StatusCode: {(int)response.StatusCode} ({response.StatusCode}); " +
                     $"ContentType: {response.Content.Headers.ContentType?.ToString() ?? "unknown"}; ResponseFormat: {responseFormat}; " +
-                    $"ResponseLength: {responseContent.Length}; OAuthError: {errorResponse?.Error ?? "unknown"}; " +
-                    $"OAuthErrorDescription: {errorResponse?.ErrorDescription ?? "unavailable"}", []);
+                    $"ResponseLength: {responseContent.Length}; OAuthError: {oauthError}; " +
+                    $"OAuthErrorDescription: {oauthErrorDescription}", []);
 
-                var failureReason = errorResponse?.Error != null
-                    ? $"{errorResponse.Error} - {errorResponse.ErrorDescription}"
-                    : $"{response.StatusCode} - non-JSON or unrecognized response";
-                throw new InvalidOperationException($"Salesforce Token API error: {failureReason}");
+                var failureReason = hasOAuthError
+                    ? $"{(int)response.StatusCode} ({response.StatusCode}) - {oauthError} - {oauthErrorDescription}"
+                    : $"{(int)response.StatusCode} ({response.StatusCode}) - non-JSON or unrecognized response";
+                throw new PluginApplicationException($"Salesforce Token API error: {failureReason}");
             }
 
             var resultDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(responseContent);
@@ -171,7 +180,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
                     $"[SalesforceKnowledge][OAuth] Token response deserialized to null. GrantType: {grantType}; " +
                     $"RequestFingerprint: {requestFingerprint}; ContentType: {response.Content.Headers.ContentType?.ToString() ?? "unknown"}; " +
                     $"ResponseLength: {responseContent.Length}", []);
-                throw new InvalidOperationException("Invalid response content: token response deserialized to null");
+                throw new PluginApplicationException("Invalid response content: token response deserialized to null");
             }
 
             if (!resultDictionary.TryGetValue(CredNames.IssuedAt, out var issuedAtValue))
@@ -180,7 +189,8 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
                 InvocationContext.Logger?.LogError(
                     $"[SalesforceKnowledge][OAuth] Token response is missing 'issued_at'. GrantType: {grantType}; " +
                     $"RequestFingerprint: {requestFingerprint}; AvailableKeys: [{responseKeys}]", []);
-                throw new InvalidOperationException($"Missing 'issued_at' key in response. Available keys: [{responseKeys}]");
+                throw new PluginApplicationException(
+                    $"Missing 'issued_at' key in response. Available keys: [{responseKeys}]");
             }
 
             var issuedAt = long.Parse(issuedAtValue);
@@ -188,12 +198,12 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
             resultDictionary.Add(CredNames.ExpiresAt, expiresAt.ToString());
             return resultDictionary;
         }
-        catch (Exception ex) when (!(ex is InvalidOperationException))
+        catch (Exception ex) when (ex is not PluginApplicationException and not PluginMisconfigurationException)
         {
             InvocationContext.Logger?.LogError(
                 $"[SalesforceKnowledge][OAuth] Unexpected error during token request. GrantType: {grantType}; " +
                 $"RequestFingerprint: {requestFingerprint}; ExceptionType: {ex.GetType().Name}; Message: {ex.Message}", []);
-            throw new InvalidOperationException($"Failed to request token: {ex.Message}", ex);
+            throw new PluginApplicationException($"Failed to request token: {ex.Message}");
         }
     }
 
