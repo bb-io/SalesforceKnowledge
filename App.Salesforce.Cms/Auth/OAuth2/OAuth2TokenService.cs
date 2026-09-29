@@ -154,7 +154,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
                 InvocationContext.Logger?.LogError(
                     $"[SalesforceKnowledge][OAuth] Token request failed. GrantType: {grantType}; " +
                     $"RequestFingerprint: {requestFingerprint}; StatusCode: {(int)response.StatusCode} ({response.StatusCode}); " +
-                    $"ContentType: {response.ContentType ?? "unknown"}; ResponseFormat: {responseFormat}; " +
+                    $"ContentType: {response.Content.Headers.ContentType?.ToString() ?? "unknown"}; ResponseFormat: {responseFormat}; " +
                     $"ResponseLength: {responseContent.Length}; OAuthError: {errorResponse?.Error ?? "unknown"}; " +
                     $"OAuthErrorDescription: {errorResponse?.ErrorDescription ?? "unavailable"}", []);
 
@@ -169,7 +169,7 @@ public class OAuth2TokenService(InvocationContext InvocationContext) : BaseInvoc
             {
                 InvocationContext.Logger?.LogError(
                     $"[SalesforceKnowledge][OAuth] Token response deserialized to null. GrantType: {grantType}; " +
-                    $"RequestFingerprint: {requestFingerprint}; ContentType: {response.ContentType ?? "unknown"}; " +
+                    $"RequestFingerprint: {requestFingerprint}; ContentType: {response.Content.Headers.ContentType?.ToString() ?? "unknown"}; " +
                     $"ResponseLength: {responseContent.Length}", []);
                 throw new InvalidOperationException("Invalid response content: token response deserialized to null");
             }
