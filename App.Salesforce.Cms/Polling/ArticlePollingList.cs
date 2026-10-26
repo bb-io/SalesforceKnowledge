@@ -8,14 +8,12 @@ using Apps.Salesforce.Cms.Polling.Models;
 using Blackbird.Applications.SDK.Blueprints;
 using Blackbird.Applications.Sdk.Common.Polling;
 using Blackbird.Applications.Sdk.Common.Invocation;
-using System.Collections.Generic;
 
 namespace Apps.Salesforce.Cms.Polling;
 
 [PollingEventList("Articles")]
 public class ArticlePollingList(InvocationContext invocationContext) : SalesforceInvocable(invocationContext)
 {
-    private const int PublishedArticlesPageSize = 100;
     private const int VisibilityBatchSize = 100;
 
     [PollingEvent("On articles created or updated", "Triggered when articles are created or updated")]
@@ -134,12 +132,14 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         [PollingEventParameter] CategoryFilterRequest category,
         [PollingEventParameter] VisibilityFilterRequest visibility)
     {
+        var pollingStart = DateTime.UtcNow;
+        
         if (request.Memory == null)
         {
             return new PollingEventResponse<DateMemory, SearchArticlesResponse>
             {
                 FlyBird = false,
-                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+                Memory = new DateMemory { LastInteractionDate = pollingStart },
                 Result = new SearchArticlesResponse([])
             };
         }
@@ -149,9 +149,8 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         var languageDetails = await Client.ExecuteWithErrorHandling<KnowledgeSettingsDto>(langRequest);
         var locale = languageDetails?.DefaultLanguage ?? "en_US";
 
-        var publishedArticles = await FetchPublishedArticlesAsync(locale);
+        var publishedArticles = await FetchPublishedArticles(locale, request.Memory.LastInteractionDate);
         var recentArticles = publishedArticles
-            .Where(a => a.LastPublishedDate > request.Memory.LastInteractionDate)
             .GroupBy(a => a.Id)
             .Select(g => g.OrderByDescending(x => x.LastPublishedDate).First())
             .ToList();
@@ -161,7 +160,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             return new PollingEventResponse<DateMemory, SearchArticlesResponse>
             {
                 FlyBird = false,
-                Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+                Memory = new DateMemory { LastInteractionDate = pollingStart },
                 Result = new SearchArticlesResponse([])
             };
         }
@@ -221,7 +220,7 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         return new PollingEventResponse<DateMemory, SearchArticlesResponse>
         {
             FlyBird = records.Count != 0,
-            Memory = new DateMemory { LastInteractionDate = DateTime.UtcNow },
+            Memory = new DateMemory { LastInteractionDate = pollingStart },
             Result = new SearchArticlesResponse(records)
         };
     }
@@ -247,11 +246,12 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
         return map;
     }
 
-    private async Task<List<PublishedArticleDto>> FetchPublishedArticlesAsync(string locale)
+    private async Task<List<PublishedArticleDto>> FetchPublishedArticles(string locale, DateTime since)
     {
         var articles = new List<PublishedArticleDto>();
         var visitedEndpoints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var endpoint = $"services/data/v57.0/support/knowledgeArticles?pageSize={PublishedArticlesPageSize}&sort=LastPublishedDate";
+        var endpoint = $"services/data/v57.0/support/knowledgeArticles" +
+                       $"?pageSize=100&sort=LastPublishedDate&order=DESC";
 
         while (!string.IsNullOrWhiteSpace(endpoint) && visitedEndpoints.Add(endpoint))
         {
@@ -259,12 +259,16 @@ public class ArticlePollingList(InvocationContext invocationContext) : Salesforc
             request.AddLocaleHeader(locale);
 
             var response = await Client.ExecuteWithErrorHandling<PublishedArticlesResponse>(request);
-            if (response?.Articles == null || response.Articles.Count == 0)
-            {
+            if (response.Articles == null || response.Articles.Count == 0)
                 break;
-            }
 
-            articles.AddRange(response.Articles.Where(x => !string.IsNullOrWhiteSpace(x.Id)));
+            articles
+                .AddRange(response.Articles
+                .Where(x => !string.IsNullOrWhiteSpace(x.Id) && x.LastPublishedDate > since));
+            
+            if (response.Articles.Min(x => x.LastPublishedDate) <= since)
+                break;
+
             endpoint = response.NextPageUrl;
         }
 
